@@ -50,11 +50,11 @@ LayoutManagement::LayoutManagement(QObject *parent)
     connect(m_loadLayout, static_cast<void (KSelectAction::*)(QAction *)>(&KSelectAction::triggered), this, &LayoutManagement::slotLoadLayout);
 #endif
 
-    QAction *saveLayout = new QAction(i18n("Save Layout…"), pCore->window()->actionCollection());
+    QAction *saveLayout = new QAction(QIcon::fromTheme(QStringLiteral("document-save-as")), i18n("Save Layout…"), pCore->window()->actionCollection());
     layoutActions->addAction(QStringLiteral("save_layout"), saveLayout);
     connect(saveLayout, &QAction::triggered, this, &LayoutManagement::slotSaveLayout);
 
-    QAction *manageLayout = new QAction(i18n("Manage Layouts…"), pCore->window()->actionCollection());
+    QAction *manageLayout = new QAction(QIcon::fromTheme(QStringLiteral("configure")), i18n("Manage Layouts…"), pCore->window()->actionCollection());
     layoutActions->addAction(QStringLiteral("manage_layout"), manageLayout);
     connect(manageLayout, &QAction::triggered, this, &LayoutManagement::slotManageLayouts);
     // Create 9 layout actions

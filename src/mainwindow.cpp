@@ -554,7 +554,7 @@ void MainWindow::init(const QString &mltPath)
     connect(m_effectBasket, &EffectBasket::activateAsset, menu, &QMenu::close);
 
     // Render button
-    ProgressButton *timelineRender = new ProgressButton(i18n("Render…"), 100, this);
+    ProgressButton *timelineRender = new ProgressButton(i18n("Export…"), 100, this);
     auto *tlrMenu = new QMenu(this);
     timelineRender->setMenu(tlrMenu);
     connect(this, &MainWindow::setRenderProgress, timelineRender, &ProgressButton::setProgress);
@@ -1345,8 +1345,8 @@ void MainWindow::setupActions()
     m_buttonTimelineTags->setChecked(KdenliveSettings::tagsintimeline());
     connect(m_buttonTimelineTags, &QAction::triggered, this, &MainWindow::slotShowTimelineTags);
 
-    m_buttonFitZoom = new QAction(QIcon::fromTheme(QStringLiteral("zoom-fit-best")), i18n("Fit Zoom to Project"), this);
-    m_buttonFitZoom->setWhatsThis(xi18nc("@info:whatsthis", "Adjusts the zoom level to fit the entire project into the timeline windows."));
+    m_buttonFitZoom = new QAction(QIcon::fromTheme(QStringLiteral("zoom-fit-best")), i18n("Fit Zoom to Sequence Content"), this);
+    m_buttonFitZoom->setWhatsThis(xi18nc("@info:whatsthis", "Adjusts the zoom level to fit the entire content of the sequence into the timeline windows."));
 
     m_buttonFitZoom->setCheckable(false);
 
@@ -1463,13 +1463,14 @@ void MainWindow::setupActions()
     addAction(QStringLiteral("project_settings"), i18n("Project Settings…"), this, SLOT(slotEditProjectSettings()),
               QIcon::fromTheme(QStringLiteral("configure")));
 
-    addAction(QStringLiteral("project_render"), i18n("Render…"), this, SLOT(slotRenderProject()), QIcon::fromTheme(QStringLiteral("media-record")),
+    addAction(QStringLiteral("project_render"), i18n("Export…"), this, SLOT(slotRenderProject()), QIcon::fromTheme(QStringLiteral("media-record")),
               Qt::CTRL | Qt::Key_Return);
 
     addAction(QStringLiteral("stop_project_render"), i18n("Stop Render"), this, SLOT(slotStopRenderProject()),
               QIcon::fromTheme(QStringLiteral("media-record")));
 
-    addAction(QStringLiteral("project_clean"), i18n("Clean Project"), this, SLOT(slotCleanProject()), QIcon::fromTheme(QStringLiteral("edit-clear")));
+    addAction(QStringLiteral("project_clean"), i18n("Remove Unused Clips…"), this, SLOT(slotCleanProject()),
+              QIcon::fromTheme(QStringLiteral("edit-clear-all")));
 
     QAction *resetAction = new QAction(QIcon::fromTheme(QStringLiteral("view-refresh")), i18n("Reset Configuration…"), this);
     addAction(QStringLiteral("reset_config"), resetAction);
@@ -1493,7 +1494,8 @@ void MainWindow::setupActions()
 
     addAction(QStringLiteral("archive_project"), i18n("Archive Project…"), this, SLOT(slotArchiveProject()),
               QIcon::fromTheme(QStringLiteral("document-save-all")));
-    addAction(QStringLiteral("switch_monitor"), i18n("Switch Monitor"), this, SLOT(slotSwitchMonitors()), QIcon(), Qt::Key_T);
+    addAction(QStringLiteral("switch_monitor"), i18n("Switch Monitor"), this, SLOT(slotSwitchMonitors()),
+              QIcon::fromTheme(QStringLiteral("exchange-positions")), Qt::Key_T);
     addAction(QStringLiteral("focus_timecode"), i18n("Focus Timecode"), this, SLOT(slotFocusTimecode()), QIcon(), Qt::Key_Equal);
     addAction(QStringLiteral("expand_timeline_clip"), i18n("Expand Clip"), this, SLOT(slotExpandClip()), QIcon::fromTheme(QStringLiteral("document-open")));
 
@@ -1839,7 +1841,7 @@ void MainWindow::setupActions()
     addAction(QStringLiteral("delete_space_all_tracks"), i18n("Remove Space in All Tracks"), this, SLOT(slotRemoveSpaceInAllTracks()));
 
     KActionCategory *timelineActions = new KActionCategory(i18n("Tracks"), actionCollection());
-    QAction *insertTrack = new QAction(QIcon(), i18nc("@action", "Insert Track…"), this);
+    QAction *insertTrack = new QAction(QIcon::fromTheme(QStringLiteral("list-add")), i18nc("@action", "Insert Track…"), this);
     connect(insertTrack, &QAction::triggered, this, &MainWindow::slotInsertTrack);
     timelineActions->addAction(QStringLiteral("insert_track"), insertTrack);
 
@@ -1861,7 +1863,7 @@ void MainWindow::setupActions()
     timelineActions->addAction(QStringLiteral("switch_target_stream"), switchTrackTarget);
     actionCollection()->setDefaultShortcut(switchTrackTarget, Qt::Key_Apostrophe);
 
-    QAction *deleteTrack = new QAction(QIcon(), i18n("Delete Track…"), this);
+    QAction *deleteTrack = new QAction(QIcon::fromTheme(QStringLiteral("list-remove")), i18n("Delete Track…"), this);
     connect(deleteTrack, &QAction::triggered, this, &MainWindow::slotDeleteTrack);
     timelineActions->addAction(QStringLiteral("delete_track"), deleteTrack);
     deleteTrack->setData("delete_track");
@@ -1968,8 +1970,8 @@ void MainWindow::setupActions()
 
     addAction(QStringLiteral("switch_track_disabled"), i18n("Toggle Track Disabled"), pCore->projectManager(), SLOT(slotSwitchTrackDisabled()), QIcon(),
               Qt::SHIFT | Qt::Key_H, timelineActions);
-    addAction(QStringLiteral("switch_track_lock"), i18n("Toggle Track Lock"), pCore->projectManager(), SLOT(slotSwitchTrackLock()), QIcon(),
-              Qt::SHIFT | Qt::Key_L, timelineActions);
+    addAction(QStringLiteral("switch_track_lock"), i18n("Toggle Track Lock"), pCore->projectManager(), SLOT(slotSwitchTrackLock()),
+              QIcon::fromTheme(QStringLiteral("lock")), Qt::SHIFT | Qt::Key_L, timelineActions);
     addAction(QStringLiteral("switch_all_track_lock"), i18n("Toggle All Track Lock"), pCore->projectManager(), SLOT(slotSwitchAllTrackLock()), QIcon(),
               Qt::CTRL | Qt::SHIFT | Qt::Key_L, timelineActions);
     addAction(QStringLiteral("switch_track_target"), i18n("Toggle Track Target"), pCore->projectManager(), SLOT(slotSwitchTrackTarget()), QIcon(),

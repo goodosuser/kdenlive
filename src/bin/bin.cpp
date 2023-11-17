@@ -1356,11 +1356,11 @@ Bin::Bin(std::shared_ptr<ProjectItemModel> model, QWidget *parent, bool isMainBi
     settingsAction->addAction(sortAction);
 
     // Column show / hide actions
-    m_showDate = new QAction(i18n("Show Date"), this);
+    m_showDate = new QAction(QIcon::fromTheme(QStringLiteral("view-calendar")), i18n("Show Date"), this);
     m_showDate->setCheckable(true);
     m_showDate->setData(1);
     connect(m_showDate, &QAction::triggered, this, &Bin::slotShowColumn);
-    m_showDesc = new QAction(i18n("Show Description"), this);
+    m_showDesc = new QAction(QIcon::fromTheme(QStringLiteral("description")), i18n("Show Description"), this);
     m_showDesc->setCheckable(true);
     m_showDesc->setData(2);
     connect(m_showDesc, &QAction::triggered, this, &Bin::slotShowColumn);
@@ -3625,7 +3625,7 @@ void Bin::setupMenu()
     m_transcodeAction->setEnabled(false);
     connect(m_transcodeAction, &QAction::triggered, this, &Bin::requestSelectionTranscoding);
 
-    m_replaceAction = addAction(QStringLiteral("replace_clip"), i18n("Replace Clip…"), QIcon::fromTheme(QStringLiteral("edit-find-replace")));
+    m_replaceAction = addAction(QStringLiteral("replace_clip"), i18n("Replace Clip…"), QIcon::fromTheme(QStringLiteral("document-replace")));
     m_replaceAction->setData("replace_clip");
     m_replaceAction->setEnabled(false);
     connect(m_replaceAction, &QAction::triggered, this, &Bin::slotReplaceClip);
