@@ -44,6 +44,7 @@ void AssetCommand::undo()
         }
     }
     m_model->setParameter(m_name, m_oldValue, true, m_index);
+    QUndoCommand::undo();
 }
 
 void AssetCommand::redo()
@@ -65,6 +66,7 @@ void AssetCommand::redo()
     }
     m_model->setParameter(m_name, m_value, m_updateView, m_index);
     m_updateView = true;
+    QUndoCommand::redo();
 }
 
 int AssetCommand::id() const
@@ -72,9 +74,14 @@ int AssetCommand::id() const
     return 1;
 }
 
+ObjectId AssetCommand::owner() const
+{
+    return m_model->getOwnerId();
+}
+
 bool AssetCommand::mergeWith(const QUndoCommand *other)
 {
-    if (other->id() != id() || static_cast<const AssetCommand *>(other)->m_index != m_index ||
+    if (other->id() != id() || static_cast<const AssetCommand *>(other)->owner() != owner() || static_cast<const AssetCommand *>(other)->m_index != m_index ||
         m_stamp.msecsTo(static_cast<const AssetCommand *>(other)->m_stamp) > 3000) {
         return false;
     }

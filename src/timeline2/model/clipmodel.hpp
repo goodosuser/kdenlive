@@ -106,6 +106,8 @@ public:
     int getMixCutPosition() const;
     void setGrab(bool grab) override;
     void setSelected(bool sel) override;
+    int assetRow(const QString &assetId) const override;
+    void applyAssetCommand(int row, const QModelIndex &index, QString value, QUndoCommand *command);
 
     /** @brief Returns an XML representation of the clip with its effects */
     QDomElement toXml(QDomDocument &document);

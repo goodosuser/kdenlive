@@ -937,3 +937,37 @@ void TimelineItemModel::processTimelineReplacement(QList<int> instances, const Q
         pCore->pushUndo(local_undo, local_redo, replaceAudio ? (replaceVideo ? i18n("Replace clip") : i18n("Replace audio")) : i18n("Replace video"));
     }
 }
+
+int TimelineItemModel::clipAssetGroupInstances(int cid, const QString &assetId)
+{
+    int gid = m_groups->getRootId(cid);
+    int count = 0;
+    if (gid > -1) {
+        std::unordered_set<int> sub = m_groups->getLeaves(gid);
+        for (auto &id : sub) {
+            if (isClip(id) && clipAssetRow(id, assetId) > -1) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command)
+{
+
+    int gid = m_groups->getRootId(cid);
+    if (gid > -1) {
+        std::unordered_set<int> sub = m_groups->getLeaves(gid);
+        sub.erase(cid);
+        for (auto &id : sub) {
+            if (isClip(id)) {
+                int assetRow = clipAssetRow(id, assetId);
+                if (assetRow > -1) {
+                    const auto clip = getClipPtr(id);
+                    clip->applyAssetCommand(assetRow, index, value, command);
+                }
+            }
+        }
+    }
+}

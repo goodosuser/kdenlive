@@ -132,8 +132,8 @@ public:
     /** @brief This is a convenience function that helps check if the tree is in a valid state */
     bool checkConsistency() override;
 
-    /** @brief Return true if an asset id is already added to this effect stack */
-    bool hasEffect(const QString &assetId) const;
+    /** @brief Return the row of the effect in the stack, -1 if not */
+    int effectRow(const QString &assetId) const;
 
     /** @brief Remove all effects for this stack */
     void removeAllEffects(Fun &undo, Fun &redo);

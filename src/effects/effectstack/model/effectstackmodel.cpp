@@ -325,7 +325,7 @@ bool EffectStackModel::fromXml(const QDomElement &effectsXml, Fun &undo, Fun &re
                 continue;
             }
         }
-        if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasEffect(effectId)) {
+        if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasFilter(effectId)) {
             pCore->displayMessage(i18n("Effect %1 cannot be added twice.", EffectsRepository::get()->getName(effectId)), ErrorMessage);
             return false;
         }
@@ -435,7 +435,7 @@ bool EffectStackModel::copyEffect(const std::shared_ptr<AbstractEffectItem> &sou
     }
     std::shared_ptr<EffectItemModel> sourceEffect = std::static_pointer_cast<EffectItemModel>(sourceItem);
     const QString effectId = sourceEffect->getAssetId();
-    if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasEffect(effectId)) {
+    if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasFilter(effectId)) {
         pCore->displayMessage(i18n("Effect %1 cannot be added twice.", EffectsRepository::get()->getName(effectId)), ErrorMessage);
         return false;
     }
@@ -510,7 +510,7 @@ bool EffectStackModel::appendEffect(const QString &effectId, bool makeCurrent, s
 bool EffectStackModel::doAppendEffect(const QString &effectId, bool makeCurrent, stringMap params, Fun &undo, Fun &redo)
 {
     QWriteLocker locker(&m_lock);
-    if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasEffect(effectId)) {
+    if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasFilter(effectId)) {
         pCore->displayMessage(i18n("Effect %1 cannot be added twice.", EffectsRepository::get()->getName(effectId)), ErrorMessage);
         return false;
     }
@@ -1102,7 +1102,7 @@ void EffectStackModel::importEffects(const std::weak_ptr<Mlt::Service> &service,
                 continue;
             }
             const QString effectId = qstrdup(filter->get("kdenlive_id"));
-            if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasEffect(effectId)) {
+            if (m_ownerId.type == KdenliveObjectType::TimelineClip && EffectsRepository::get()->isUnique(effectId) && hasFilter(effectId)) {
                 pCore->displayMessage(i18n("Effect %1 cannot be added twice.", EffectsRepository::get()->getName(effectId)), ErrorMessage);
                 continue;
             }
@@ -1513,14 +1513,14 @@ bool EffectStackModel::hasKeyFrame(int frame)
     return listModel->hasKeyframe(frame);
 }
 
-bool EffectStackModel::hasEffect(const QString &assetId) const
+int EffectStackModel::effectRow(const QString &assetId) const
 {
     for (int i = 0; i < rootItem->childCount(); ++i) {
         if (std::static_pointer_cast<EffectItemModel>(rootItem->child(i))->getAssetId() == assetId) {
-            return true;
+            return i;
         }
     }
-    return false;
+    return -1;
 }
 
 QVariantList EffectStackModel::getEffectZones() const

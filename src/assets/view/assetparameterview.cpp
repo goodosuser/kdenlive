@@ -171,6 +171,9 @@ void AssetParameterView::commitChanges(const QModelIndex &index, const QString &
     // Warning: please note that some widgets (for example keyframes) do NOT send the valueChanged signal and do modifications on their own
     auto *command = new AssetCommand(m_model, index, value);
     if (storeUndo && m_model->getOwnerId().itemId != -1) {
+        if (m_model->getOwnerId().type == KdenliveObjectType::TimelineClip) {
+            pCore->groupAssetCommand(m_model->getOwnerId(), m_model->getAssetId(), index, value, command);
+        }
         pCore->pushUndo(command);
     } else {
         command->redo();

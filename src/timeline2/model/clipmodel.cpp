@@ -3,10 +3,12 @@
     SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 */
 #include "clipmodel.hpp"
+#include "assets/model/assetcommand.hpp"
 #include "bin/projectclip.h"
 #include "bin/projectitemmodel.h"
 #include "clipsnapmodel.hpp"
 #include "core.h"
+#include "effects/effectstack/model/effectitemmodel.hpp"
 #include "effects/effectstack/model/effectstackmodel.hpp"
 #ifdef CRASH_AUTO_TEST
 #include "logger.hpp"
@@ -1566,4 +1568,23 @@ void ClipModel::switchBinReference(const QString newId, const QUuid &uuid)
             Q_EMIT ptr->invalidateZone(m_position, m_position + getPlaytime());
         }
     }
+}
+
+int ClipModel::assetRow(const QString &assetId) const
+{
+    return m_effectStack->effectRow(assetId);
+}
+
+void ClipModel::applyAssetCommand(int row, const QModelIndex &index, QString value, QUndoCommand *command)
+{
+
+    auto item = m_effectStack->getEffectStackRow(row);
+    if (!item || item->childCount() > 0) {
+        // group, error
+        return;
+    }
+    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
+    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
+    qDebug() << "::: APPLYING ASSET VALUE CHANGE on item: " << m_effectStack->getOwnerId().itemId << ", VAL: " << value;
+    auto c = new AssetCommand(effectParamModel, index, value, command);
 }

@@ -310,6 +310,10 @@ public:
     const QUuid currentTimelineId() const;
     /** @brief Update a sequence AV info (has audio/video) */
     void updateSequenceAVType(const QUuid &uuid, int tracksCount);
+    /** @brief If a clip is grouped, return the count of items using the same effect */
+    int getAssetGroupedInstance(const ObjectId &id, const QString &assetId);
+    /** @brief Apply an effect command on all clips in a group */
+    void groupAssetCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command);
     /** @brief A list of markers type categories {marker type, {color, category name}} */
     struct MarkerCategory
     {

@@ -89,6 +89,9 @@ public:
     void importTrackEffects(int tid, std::weak_ptr<Mlt::Service> service);
     /** @brief Save the sequence properties in MLT tractor */
     void passSequenceProperties(const QMap<QString, QString> baseProperties);
+    /** @brief Return the count of items sharing a same effect in a group */
+    int clipAssetGroupInstances(int cid, const QString &assetId);
+    void applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command);
 
     const QString groupsData();
     bool loadGroups(const QString &groupsData);

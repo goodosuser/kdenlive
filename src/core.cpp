@@ -1461,3 +1461,16 @@ void Core::updateSequenceAVType(const QUuid &uuid, int tracksCount)
         pCore->bin()->updateSequenceAVType(uuid, tracksCount);
     }
 }
+
+int Core::getAssetGroupedInstance(const ObjectId &id, const QString &assetId)
+{
+    if (id.type == KdenliveObjectType::TimelineClip) {
+        return currentDoc()->getTimeline(id.uuid)->clipAssetGroupInstances(id.itemId, assetId);
+    }
+    return 0;
+}
+
+void Core::groupAssetCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command)
+{
+    currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupCommand(id.itemId, assetId, index, value, command);
+}

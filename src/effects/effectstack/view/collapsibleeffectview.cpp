@@ -47,7 +47,7 @@ CollapsibleEffectView::CollapsibleEffectView(const QString &effectName, const st
     , m_blockWheel(false)
     , m_dragging(false)
 {
-    QString effectId = effectModel->getAssetId();
+    const QString effectId = effectModel->getAssetId();
     buttonUp->setIcon(QIcon::fromTheme(QStringLiteral("selection-raise")));
     buttonUp->setToolTip(i18n("Move effect up"));
     buttonUp->setWhatsThis(xi18nc(
@@ -86,10 +86,24 @@ CollapsibleEffectView::CollapsibleEffectView(const QString &effectName, const st
     }
 
     auto *l = static_cast<QHBoxLayout *>(frame->layout());
+    int groupedInstances = pCore->getAssetGroupedInstance(m_model->getOwnerId(), effectId);
+    int layoutIndex = 1;
+    if (groupedInstances > 1) {
+        QLabel *effectInstances = new QLabel(this);
+        QPalette pal = palette();
+        pal.setColor(QPalette::Base, Qt::darkYellow);
+        effectInstances->setPalette(pal);
+        effectInstances->setText(QString::number(groupedInstances));
+        effectInstances->setToolTip(i18n("%1 instances of this effect in the group", groupedInstances));
+        effectInstances->setMargin(4);
+        effectInstances->setAutoFillBackground(true);
+        l->insertWidget(layoutIndex, effectInstances);
+        layoutIndex++;
+    }
     title = new KSqueezedTextLabel(this);
     title->setToolTip(effectName);
     title->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-    l->insertWidget(1, title);
+    l->insertWidget(layoutIndex, title);
 
     keyframesButton->setIcon(QIcon::fromTheme(QStringLiteral("keyframe")));
     keyframesButton->setCheckable(true);
