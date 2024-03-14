@@ -314,6 +314,8 @@ public:
     int getAssetGroupedInstance(const ObjectId &id, const QString &assetId);
     /** @brief Apply an effect command on all clips in a group */
     void groupAssetCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command);
+    void groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &value,
+                                   QUndoCommand *command);
     /** @brief A list of markers type categories {marker type, {color, category name}} */
     struct MarkerCategory
     {

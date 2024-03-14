@@ -982,7 +982,10 @@
       <label>Show small effect description in effects list.</label>
       <default>false</default>
     </entry>
-
+    <entry name="applyEffectParamsToGroup" type="Bool">
+      <label>Apply effect param change to all clips in the group.</label>
+      <default>false</default>
+    </entry>
     <entry name="renderProfile" type="String">
       <label>Default render profile.</label>
       <default>MP4-H264/AAC</default>

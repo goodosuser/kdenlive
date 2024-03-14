@@ -91,6 +91,8 @@ public Q_SLOTS:
     void switchCollapsed(int row);
     /** @brief Open a save effect dialog */
     void slotSaveEffect();
+    /** @brief Show hide the count of grouped instances for this effect */
+    void updateGroupedInstances();
 
 private Q_SLOTS:
     void setWidgetHeight(qreal value);
@@ -118,6 +120,7 @@ private:
     ItemInfo m_itemInfo;
     QDomElement m_original_effect;
     QList<QDomElement> m_subEffects;
+    QLabel *m_effectInstances{nullptr};
     QMenu *m_menu;
     bool m_isMovable;
     bool m_blockWheel;

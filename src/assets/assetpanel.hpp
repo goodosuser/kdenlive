@@ -83,6 +83,7 @@ protected:
 
 private:
     QToolButton *m_switchBuiltStack;
+    QToolButton *m_applyEffectGroups;
     QToolButton *m_saveEffectStack;
     QComboBox *m_switchCompoButton;
     QAction *m_titleAction;

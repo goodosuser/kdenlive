@@ -1585,6 +1585,28 @@ void ClipModel::applyAssetCommand(int row, const QModelIndex &index, QString val
     }
     std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
     const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
-    qDebug() << "::: APPLYING ASSET VALUE CHANGE on item: " << m_effectStack->getOwnerId().itemId << ", VAL: " << value;
-    auto c = new AssetCommand(effectParamModel, index, value, command);
+    new AssetCommand(effectParamModel, index, value, command);
+}
+
+void ClipModel::applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &value, QUndoCommand *command)
+{
+    auto item = m_effectStack->getEffectStackRow(row);
+    if (!item || item->childCount() > 0) {
+        // group, error
+        return;
+    }
+    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
+    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
+    new AssetKeyframeCommand(effectParamModel, index, value, pos, command);
+}
+
+std::shared_ptr<KeyframeModelList> ClipModel::getKFModel(int row)
+{
+    auto item = m_effectStack->getEffectStackRow(row);
+    if (!item || item->childCount() > 0) {
+        // group, error
+        return nullptr;
+    }
+    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
+    return eff->getKeyframeModel();
 }

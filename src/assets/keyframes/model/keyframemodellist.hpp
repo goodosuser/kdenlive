@@ -170,10 +170,11 @@ public:
     void checkConsistency();
     /** @brief Returns the indexes of all parameters */
     std::vector<QPersistentModelIndex> getIndexes();
+    std::unordered_map<QPersistentModelIndex, std::shared_ptr<KeyframeModel>> getAllParameters() { return m_parameters; };
 
 protected:
     /** @brief Helper function to apply a given operation on all parameters */
-    bool applyOperation(const std::function<bool(std::shared_ptr<KeyframeModel>, Fun &, Fun &)> &op, const QString &undoString);
+    bool applyOperation(const std::function<bool(std::shared_ptr<KeyframeModel>, bool, Fun &, Fun &)> &op, const QString &undoString);
 
 Q_SIGNALS:
     void modelChanged();

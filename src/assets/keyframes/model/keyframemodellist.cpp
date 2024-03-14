@@ -8,9 +8,11 @@
 #include "assets/model/assetparametermodel.hpp"
 #include "core.h"
 #include "doc/docundostack.hpp"
+#include "doc/kdenlivedoc.h"
 #include "keyframemodel.hpp"
 #include "klocalizedstring.h"
 #include "macros.hpp"
+#include "timeline2/model/timelineitemmodel.hpp"
 #include <kdenlivesettings.h>
 
 #include <QDebug>
@@ -102,7 +104,7 @@ void KeyframeModelList::slotUpdateModels(const QModelIndex &ix1, const QModelInd
     Q_EMIT modelDisplayChanged();
 }
 
-bool KeyframeModelList::applyOperation(const std::function<bool(std::shared_ptr<KeyframeModel>, Fun &, Fun &)> &op, const QString &undoString)
+bool KeyframeModelList::applyOperation(const std::function<bool(std::shared_ptr<KeyframeModel>, bool, Fun &, Fun &)> &op, const QString &undoString)
 {
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
@@ -111,11 +113,26 @@ bool KeyframeModelList::applyOperation(const std::function<bool(std::shared_ptr<
 
     bool res = true;
     for (const auto &param : m_parameters) {
-        res = op(param.second, undo, redo);
+        res = op(param.second, false, undo, redo);
         if (!res) {
             bool undone = undo();
             Q_ASSERT(undone);
             return res;
+        }
+    }
+    if (KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            std::unordered_map<QPersistentModelIndex, std::shared_ptr<KeyframeModel>> params = km->getAllParameters();
+            for (const auto &param : params) {
+                res = op(param.second, true, undo, redo);
+                if (!res) {
+                    bool undone = undo();
+                    Q_ASSERT(undone);
+                    return res;
+                }
+            }
         }
     }
     if (res && !undoString.isEmpty()) {
@@ -129,7 +146,7 @@ bool KeyframeModelList::addKeyframe(GenTime pos, KeyframeType type)
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
     bool update = (m_parameters.begin()->second->hasKeyframe(pos) > 0);
-    auto op = [pos, type](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) {
+    auto op = [pos, type](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) {
         QVariant value = param->getInterpolatedValue(pos);
         return param->addKeyframe(pos, type, value, true, undo, redo);
     };
@@ -151,7 +168,7 @@ bool KeyframeModelList::addKeyframe(int frame, double val)
             }
         }
     }
-    auto op = [this, pos, val, isRectParam](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) {
+    auto op = [this, pos, val, isRectParam](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) {
         QVariant value;
         if (m_inTimelineIndex.isValid()) {
             if (m_parameters.at(m_inTimelineIndex) == param) {
@@ -178,7 +195,9 @@ bool KeyframeModelList::removeKeyframe(GenTime pos)
 {
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
-    auto op = [pos](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) { return param->removeKeyframe(pos, undo, redo); };
+    auto op = [pos](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
+        return param->removeKeyframe(pos, undo, redo, true, true, allowedToFail);
+    };
     return applyOperation(op, i18n("Delete keyframe"));
 }
 
@@ -204,7 +223,7 @@ bool KeyframeModelList::removeAllKeyframes()
 {
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
-    auto op = [](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) { return param->removeAllKeyframes(undo, redo); };
+    auto op = [](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) { return param->removeAllKeyframes(undo, redo); };
     return applyOperation(op, i18n("Delete all keyframes"));
 }
 
@@ -212,7 +231,7 @@ bool KeyframeModelList::removeNextKeyframes(GenTime pos)
 {
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
-    auto op = [pos](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) { return param->removeNextKeyframes(pos, undo, redo); };
+    auto op = [pos](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) { return param->removeNextKeyframes(pos, undo, redo); };
     return applyOperation(op, i18n("Delete keyframes"));
 }
 
@@ -220,8 +239,8 @@ bool KeyframeModelList::moveKeyframe(GenTime oldPos, GenTime pos, bool logUndo, 
 {
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
-    auto op = [oldPos, pos, updateView](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) {
-        return param->moveKeyframe(oldPos, pos, QVariant(), undo, redo, updateView);
+    auto op = [oldPos, pos, updateView](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
+        return param->moveKeyframe(oldPos, pos, QVariant(), undo, redo, updateView, allowedToFail);
     };
     return applyOperation(op, logUndo ? i18nc("@action", "Move keyframe") : QString());
 }
@@ -248,7 +267,7 @@ bool KeyframeModelList::updateKeyframe(GenTime oldPos, GenTime pos, const QVaria
             }
         }
     }
-    auto op = [this, oldPos, pos, normalizedVal, isRectParam](std::shared_ptr<KeyframeModel> param, Fun &undo, Fun &redo) {
+    auto op = [this, oldPos, pos, normalizedVal, isRectParam](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
         QVariant value;
         if (m_inTimelineIndex.isValid()) {
             if (m_parameters.at(m_inTimelineIndex) == param) {
@@ -265,7 +284,7 @@ bool KeyframeModelList::updateKeyframe(GenTime oldPos, GenTime pos, const QVaria
         } else if (m_parameters.begin()->second == param) {
             value = normalizedVal;
         }
-        return param->moveKeyframe(oldPos, pos, value, undo, redo);
+        return param->moveKeyframe(oldPos, pos, value, undo, redo, true, allowedToFail);
     };
     return applyOperation(op, logUndo ? i18nc("@action", "Move keyframe") : QString());
 }
@@ -279,6 +298,7 @@ bool KeyframeModelList::updateKeyframe(GenTime pos, const QVariant &value, const
     }
     if (auto ptr = m_model.lock()) {
         auto *command = new AssetKeyframeCommand(ptr, index, value, pos, parentCommand);
+        pCore->groupAssetKeyframeCommand(ptr->getOwnerId(), ptr->getAssetId(), index, pos, value, command);
         if (parentCommand == nullptr) {
             pCore->pushUndo(command);
         } // clang-tidy: else "command" is leaked? no because is was pushed to parentCommand
@@ -511,8 +531,16 @@ KeyframeModel *KeyframeModelList::getKeyModel()
 
 KeyframeModel *KeyframeModelList::getKeyModel(const QPersistentModelIndex &index)
 {
-    if (m_parameters.size() > 0 && m_parameters.find(index) != m_parameters.end()) {
-        return m_parameters.at(index).get();
+    if (m_parameters.size() > 0) {
+        if (m_parameters.find(index) != m_parameters.end()) {
+            return m_parameters.at(index).get();
+        }
+        if (auto ptr = m_model.lock()) {
+            auto ix = ptr->index(index.row(), 0);
+            if (m_parameters.find(ix) != m_parameters.end()) {
+                return m_parameters.at(ix).get();
+            }
+        }
     }
     return nullptr;
 }

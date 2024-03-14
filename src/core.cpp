@@ -1472,5 +1472,15 @@ int Core::getAssetGroupedInstance(const ObjectId &id, const QString &assetId)
 
 void Core::groupAssetCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command)
 {
-    currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupCommand(id.itemId, assetId, index, value, command);
+    if (KdenliveSettings::applyEffectParamsToGroup()) {
+        currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupCommand(id.itemId, assetId, index, value, command);
+    }
+}
+
+void Core::groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &value,
+                                     QUndoCommand *command)
+{
+    if (KdenliveSettings::applyEffectParamsToGroup()) {
+        currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, value, command);
+    }
 }

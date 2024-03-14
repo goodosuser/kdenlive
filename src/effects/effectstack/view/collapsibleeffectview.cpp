@@ -86,24 +86,12 @@ CollapsibleEffectView::CollapsibleEffectView(const QString &effectName, const st
     }
 
     auto *l = static_cast<QHBoxLayout *>(frame->layout());
-    int groupedInstances = pCore->getAssetGroupedInstance(m_model->getOwnerId(), effectId);
-    int layoutIndex = 1;
-    if (groupedInstances > 1) {
-        QLabel *effectInstances = new QLabel(this);
-        QPalette pal = palette();
-        pal.setColor(QPalette::Base, Qt::darkYellow);
-        effectInstances->setPalette(pal);
-        effectInstances->setText(QString::number(groupedInstances));
-        effectInstances->setToolTip(i18n("%1 instances of this effect in the group", groupedInstances));
-        effectInstances->setMargin(4);
-        effectInstances->setAutoFillBackground(true);
-        l->insertWidget(layoutIndex, effectInstances);
-        layoutIndex++;
-    }
     title = new KSqueezedTextLabel(this);
     title->setToolTip(effectName);
     title->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-    l->insertWidget(layoutIndex, title);
+    l->insertWidget(1, title);
+
+    updateGroupedInstances();
 
     keyframesButton->setIcon(QIcon::fromTheme(QStringLiteral("keyframe")));
     keyframesButton->setCheckable(true);
@@ -292,6 +280,29 @@ CollapsibleEffectView::CollapsibleEffectView(const QString &effectName, const st
 CollapsibleEffectView::~CollapsibleEffectView()
 {
     qDebug() << "deleting collapsibleeffectview";
+}
+
+void CollapsibleEffectView::updateGroupedInstances()
+{
+    int groupedInstances = 0;
+    if (KdenliveSettings::applyEffectParamsToGroup()) {
+        groupedInstances = pCore->getAssetGroupedInstance(m_model->getOwnerId(), m_model->getAssetId());
+    }
+    if (m_effectInstances) {
+        delete m_effectInstances;
+        m_effectInstances = nullptr;
+    }
+    if (groupedInstances > 1) {
+        auto *l = static_cast<QHBoxLayout *>(frame->layout());
+        m_effectInstances = new QLabel(this);
+        int h = (buttonUp->height() - 4) / 3;
+        m_effectInstances->setStyleSheet(QString("margin: 2px; padding: 0px; border-radius: %1px; background: #885500; color: #FFFFFF;").arg(h));
+        m_effectInstances->setText(QString::number(groupedInstances));
+        m_effectInstances->setToolTip(i18n("%1 instances of this effect in the group", groupedInstances));
+        m_effectInstances->setMargin(4);
+        m_effectInstances->setAutoFillBackground(true);
+        l->insertWidget(1, m_effectInstances);
+    }
 }
 
 void CollapsibleEffectView::setWidgetHeight(qreal value)

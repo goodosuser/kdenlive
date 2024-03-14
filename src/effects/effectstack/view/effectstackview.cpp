@@ -318,6 +318,7 @@ void EffectStackView::loadEffects()
         connect(view, &CollapsibleEffectView::createGroup, m_model.get(), &EffectStackModel::slotCreateGroup);
         connect(view, &CollapsibleEffectView::showEffectZone, pCore.get(), &Core::showEffectZone);
         connect(this, &EffectStackView::blockWheelEvent, view, &CollapsibleEffectView::blockWheelEvent);
+        connect(this, &EffectStackView::updateEffectsGroupesInstances, view, &CollapsibleEffectView::updateGroupedInstances);
         connect(view, &CollapsibleEffectView::seekToPos, this, [this](int pos) {
             // at this point, the effects returns a pos relative to the clip. We need to convert it to a global time
             int clipIn = pCore->getItemPosition(m_model->getOwnerId());

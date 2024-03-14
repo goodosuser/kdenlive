@@ -173,12 +173,14 @@ AssetKeyframeCommand::AssetKeyframeCommand(const std::shared_ptr<AssetParameterM
 void AssetKeyframeCommand::undo()
 {
     m_model->getKeyframeModel()->getKeyModel(m_index)->directUpdateKeyframe(m_pos, m_oldValue);
+    QUndoCommand::undo();
 }
 // virtual
 void AssetKeyframeCommand::redo()
 {
     m_model->getKeyframeModel()->getKeyModel(m_index)->directUpdateKeyframe(m_pos, m_value);
     m_updateView = true;
+    QUndoCommand::redo();
 }
 
 // virtual

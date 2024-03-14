@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "assets/keyframes/model/keyframemodellist.hpp"
 #include "timelinemodel.hpp"
 #include "undohelper.hpp"
 
@@ -92,6 +93,9 @@ public:
     /** @brief Return the count of items sharing a same effect in a group */
     int clipAssetGroupInstances(int cid, const QString &assetId);
     void applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command);
+    void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &value,
+                                            QUndoCommand *command);
+    QList<std::shared_ptr<KeyframeModelList>> getGroupKeyframeModels(int cid, const QString &assetId);
 
     const QString groupsData();
     bool loadGroups(const QString &groupsData);

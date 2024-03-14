@@ -955,10 +955,14 @@ int TimelineItemModel::clipAssetGroupInstances(int cid, const QString &assetId)
 
 void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command)
 {
-
     int gid = m_groups->getRootId(cid);
     if (gid > -1) {
-        std::unordered_set<int> sub = m_groups->getLeaves(gid);
+        std::unordered_set<int> sub;
+        if (m_singleSelectionMode && m_currentSelection.count(cid)) {
+            sub = m_currentSelection;
+        } else {
+            sub = m_groups->getLeaves(gid);
+        }
         sub.erase(cid);
         for (auto &id : sub) {
             if (isClip(id)) {
@@ -970,4 +974,56 @@ void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &asset
             }
         }
     }
+}
+
+void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &value,
+                                                           QUndoCommand *command)
+{
+    int gid = m_groups->getRootId(cid);
+    if (gid > -1) {
+        std::unordered_set<int> sub;
+        if (m_singleSelectionMode && m_currentSelection.count(cid)) {
+            sub = m_currentSelection;
+        } else {
+            sub = m_groups->getLeaves(gid);
+        }
+        sub.erase(cid);
+        for (auto &id : sub) {
+            if (isClip(id)) {
+                int assetRow = clipAssetRow(id, assetId);
+                if (assetRow > -1) {
+                    const auto clip = getClipPtr(id);
+                    clip->applyAssetKeyframeCommand(assetRow, index, pos, value, command);
+                }
+            }
+        }
+    }
+}
+
+QList<std::shared_ptr<KeyframeModelList>> TimelineItemModel::getGroupKeyframeModels(int cid, const QString &assetId)
+{
+    QList<std::shared_ptr<KeyframeModelList>> models;
+    int gid = m_groups->getRootId(cid);
+    if (gid > -1) {
+        std::unordered_set<int> sub;
+        if (m_singleSelectionMode && m_currentSelection.count(cid)) {
+            sub = m_currentSelection;
+        } else {
+            sub = m_groups->getLeaves(gid);
+        }
+        sub.erase(cid);
+        for (auto &id : sub) {
+            if (isClip(id)) {
+                int assetRow = clipAssetRow(id, assetId);
+                if (assetRow > -1) {
+                    const auto clip = getClipPtr(id);
+                    auto mdl = clip->getKFModel(assetRow);
+                    if (mdl) {
+                        models << mdl;
+                    }
+                }
+            }
+        }
+    }
+    return models;
 }
