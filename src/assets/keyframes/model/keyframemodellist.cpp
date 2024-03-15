@@ -297,8 +297,9 @@ bool KeyframeModelList::updateKeyframe(GenTime pos, const QVariant &value, const
         pos = kf.first;
     }
     if (auto ptr = m_model.lock()) {
+        const QVariant previousValue = getKeyModel(index)->getInterpolatedValue(pos);
         auto *command = new AssetKeyframeCommand(ptr, index, value, pos, parentCommand);
-        pCore->groupAssetKeyframeCommand(ptr->getOwnerId(), ptr->getAssetId(), index, pos, value, command);
+        pCore->groupAssetKeyframeCommand(ptr->getOwnerId(), ptr->getAssetId(), index, pos, previousValue, value, command);
         if (parentCommand == nullptr) {
             pCore->pushUndo(command);
         } // clang-tidy: else "command" is leaked? no because is was pushed to parentCommand

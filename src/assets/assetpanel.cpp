@@ -28,6 +28,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QFontDatabase>
+#include <QMenu>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QToolBar>
@@ -82,7 +83,9 @@ AssetPanel::AssetPanel(QWidget *parent)
     // connect(m_switchBuiltStack, &QToolButton::toggled, m_effectStackWidget, &EffectStackView::switchBuiltStack);
     buttonToolbar->addWidget(m_switchBuiltStack);
 
-    m_applyEffectGroups = new QToolButton(this);
+    QToolButton *applyEffectGroupsButton = new QToolButton(this);
+    applyEffectGroupsButton->setPopupMode(QToolButton::MenuButtonPopup);
+    m_applyEffectGroups = new QAction(i18n("Apply effect change to all clips in the group"), this);
     m_applyEffectGroups->setCheckable(true);
     m_applyEffectGroups->setChecked(KdenliveSettings::applyEffectParamsToGroup());
     m_applyEffectGroups->setIcon(QIcon::fromTheme(QStringLiteral("edit-copy")));
@@ -90,12 +93,20 @@ AssetPanel::AssetPanel(QWidget *parent)
     m_applyEffectGroups->setWhatsThis(
         xi18nc("@info:whatsthis",
                "When enabled and the clip is in a group, all clips in this group that have the same effect will see the parameters adjusted as well."));
-    buttonToolbar->addWidget(m_applyEffectGroups);
-    connect(m_applyEffectGroups, &QToolButton::toggled, this, [this](bool enabled) {
+    buttonToolbar->addWidget(applyEffectGroupsButton);
+    connect(m_applyEffectGroups, &QAction::toggled, this, [this](bool enabled) {
         KdenliveSettings::setApplyEffectParamsToGroup(enabled);
         Q_EMIT m_effectStackWidget->updateEffectsGroupesInstances();
     });
+    QMenu *effectGroupMenu = new QMenu(this);
+    QAction *applyToSameOnly = new QAction(i18n("Apply only to effects with same value"), this);
+    applyToSameOnly->setCheckable(true);
+    applyToSameOnly->setChecked(KdenliveSettings::applyEffectParamsToGroupWithSameValue());
+    connect(applyToSameOnly, &QAction::toggled, this, [this](bool enabled) { KdenliveSettings::setApplyEffectParamsToGroupWithSameValue(enabled); });
+    effectGroupMenu->addAction(applyToSameOnly);
 
+    applyEffectGroupsButton->setMenu(effectGroupMenu);
+    applyEffectGroupsButton->setDefaultAction(m_applyEffectGroups);
     m_saveEffectStack = new QToolButton(this);
     m_saveEffectStack->setIcon(QIcon::fromTheme(QStringLiteral("document-save-all")));
     m_saveEffectStack->setToolTip(i18n("Save Effect Stack…"));

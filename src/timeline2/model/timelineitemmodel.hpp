@@ -92,9 +92,10 @@ public:
     void passSequenceProperties(const QMap<QString, QString> baseProperties);
     /** @brief Return the count of items sharing a same effect in a group */
     int clipAssetGroupInstances(int cid, const QString &assetId);
-    void applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command);
-    void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &value,
-                                            QUndoCommand *command);
+    void applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
+                                    QUndoCommand *command);
+    void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
+                                            const QVariant &value, QUndoCommand *command);
     QList<std::shared_ptr<KeyframeModelList>> getGroupKeyframeModels(int cid, const QString &assetId);
 
     const QString groupsData();

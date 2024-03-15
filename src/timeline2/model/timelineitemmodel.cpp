@@ -953,7 +953,8 @@ int TimelineItemModel::clipAssetGroupInstances(int cid, const QString &assetId)
     return count;
 }
 
-void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, QString value, QUndoCommand *command)
+void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
+                                                   QUndoCommand *command)
 {
     int gid = m_groups->getRootId(cid);
     if (gid > -1) {
@@ -969,15 +970,15 @@ void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &asset
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->applyAssetCommand(assetRow, index, value, command);
+                    clip->applyAssetCommand(assetRow, index, previousValue, value, command);
                 }
             }
         }
     }
 }
 
-void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &value,
-                                                           QUndoCommand *command)
+void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos,
+                                                           const QVariant &previousValue, const QVariant &value, QUndoCommand *command)
 {
     int gid = m_groups->getRootId(cid);
     if (gid > -1) {
@@ -993,7 +994,7 @@ void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QStrin
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->applyAssetKeyframeCommand(assetRow, index, pos, value, command);
+                    clip->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, command);
                 }
             }
         }
