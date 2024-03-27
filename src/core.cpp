@@ -170,9 +170,6 @@ void Core::initGUI(bool inSandbox, const QString &MltPath, const QUrl &Url, cons
     connect(m_projectItemModel.get(), &QAbstractItemModel::dataChanged, m_mainWindow->activeBin(), &Bin::slotItemEdited);
 
     m_monitorManager = new MonitorManager(this);
-    if (!Url.isEmpty()) {
-        Q_EMIT loadingMessageNewStage(i18n("Loading project…"));
-    }
     projectManager()->init(Url, clipsToLoad);
 
     // The MLT Factory will be initiated there, all MLT classes will be usable only after this
@@ -244,10 +241,13 @@ void Core::initGUI(bool inSandbox, const QString &MltPath, const QUrl &Url, cons
         m_mainWindow->restore(1, false);
     }
     m_guiConstructed = true;
-    QMetaObject::invokeMethod(pCore->projectManager(), "slotLoadOnOpen", Qt::QueuedConnection);
     m_mainWindow->show();
     bin->slotUpdatePalette();
     Q_EMIT m_mainWindow->GUISetupDone();
+    if (!Url.isEmpty()) {
+        Q_EMIT loadingMessageNewStage(i18n("Loading project…"));
+    }
+    QMetaObject::invokeMethod(pCore->projectManager(), "slotLoadOnOpen", Qt::QueuedConnection);
 }
 
 void Core::buildDocks()
@@ -1245,10 +1245,18 @@ void Core::resetAudioMonitoring()
     }
 }
 
-QString Core::getProjectFolderName(bool folderForAudio)
+QString Core::getProjectFolderName()
 {
     if (currentDoc()) {
-        return currentDoc()->projectDataFolder(QStringLiteral(), folderForAudio) + QDir::separator();
+        return currentDoc()->projectDataFolder(QStringLiteral()) + QDir::separator();
+    }
+    return QString();
+}
+
+QString Core::getProjectCaptureFolderName()
+{
+    if (currentDoc()) {
+        return currentDoc()->projectCaptureFolder() + QDir::separator();
     }
     return QString();
 }

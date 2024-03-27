@@ -71,6 +71,7 @@ public:
     Core &operator=(const Core &) = delete;
     Core(Core &&) = delete;
     Core &operator=(Core &&) = delete;
+    QMutex xmlMutex;
 
     ~Core() override;
 
@@ -241,7 +242,9 @@ public:
     bool isMediaCapturing() const;
     MediaCapture *getAudioDevice();
     /** @brief Returns Project Folder name for capture output location */
-    QString getProjectFolderName(bool folderForAudio = false);
+    QString getProjectFolderName();
+    /** @brief Returns configured folder for audio capture storage */
+    QString getProjectCaptureFolderName();
     /** @brief Returns a timeline clip's bin id */
     QString getTimelineClipBinId(int cid);
     /** @brief Returns all track ids in timeline */

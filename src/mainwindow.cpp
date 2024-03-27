@@ -4414,6 +4414,14 @@ TimelineWidget *MainWindow::getTimeline(const QUuid uuid) const
     return m_timelineTabs->getTimeline(uuid);
 }
 
+void MainWindow::getSequenceProperties(const QUuid &uuid, QMap<QString, QString> &props)
+{
+    TimelineWidget *w = getTimeline(uuid);
+    if (w) {
+        w->controller()->getSequenceProperties(props);
+    }
+}
+
 bool MainWindow::hasTimeline() const
 {
     return m_timelineTabs != nullptr;
@@ -4768,6 +4776,13 @@ void MainWindow::tabifyBins()
     }
 }
 
+void MainWindow::blockBins(bool block)
+{
+    for (auto &b : m_binWidgets) {
+        b->blockBin(block);
+    }
+}
+
 Bin *MainWindow::getBin()
 {
     if (m_binWidgets.isEmpty()) {
@@ -4849,7 +4864,7 @@ void MainWindow::checkMaxCacheSize()
 
     KdenliveSettings::setLastCacheCheck(QDateTime::currentDateTime());
     // Check cached data size
-    if (KdenliveSettings::maxcachesize() <= 0) {
+    if (KdenliveSettings::maxcachesize() <= 0 || pCore->currentDoc() == nullptr) {
         return;
     }
     bool ok;

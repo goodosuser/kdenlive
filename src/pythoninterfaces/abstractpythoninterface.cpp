@@ -52,9 +52,9 @@ PythonDependencyMessage::PythonDependencyMessage(QWidget *parent, AbstractPython
                 }
             } else {
                 if (m_interface->featureName().isEmpty()) {
-                    doShowMessage(i18n("Everything is configured: %1", list.join(QStringLiteral(", "))), KMessageWidget::Positive);
+                    doShowMessage(i18n("Everything is configured:<br>%1", list.join(QStringLiteral(", "))), KMessageWidget::Positive);
                 } else {
-                    doShowMessage(i18n("%1 is configured: %2", m_interface->featureName(), list.join(QStringLiteral(", "))), KMessageWidget::Positive);
+                    doShowMessage(i18n("%1 is configured:<br>%2", m_interface->featureName(), list.join(QStringLiteral(", "))), KMessageWidget::Positive);
                 }
             }
         });
@@ -135,10 +135,10 @@ void PythonDependencyMessage::checkAfterInstall()
 
 AbstractPythonInterface::AbstractPythonInterface(QObject *parent)
     : QObject{parent}
-    , m_dependencies()
     , m_versions(new QMap<QString, QString>())
     , m_disableInstall(pCore->packageType() == QStringLiteral("flatpak"))
     , m_dependenciesChecked(false)
+    , m_dependencies()
     , m_scripts(new QMap<QString, QString>())
 {
     addScript(QStringLiteral("checkpackages.py"));
@@ -184,8 +184,10 @@ bool AbstractPythonInterface::checkPython(bool useVenv, bool calculateSize, bool
         QDir pluginDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
         if (!pluginDir.exists(pythonPath)) {
             // Setup venv
-            if (forceInstall && !setupVenv()) {
-                return false;
+            if (forceInstall) {
+                if (!setupVenv()) {
+                    return false;
+                }
             } else {
                 // Venv folder not found, disable
                 useVenv = false;
@@ -327,9 +329,12 @@ QString AbstractPythonInterface::locateScript(const QString &script)
     return path;
 }
 
-void AbstractPythonInterface::addDependency(const QString &pipname, const QString &purpose)
+void AbstractPythonInterface::addDependency(const QString &pipname, const QString &purpose, bool optional)
 {
     m_dependencies.insert(pipname, purpose);
+    if (optional) {
+        m_optionalDeps << pipname;
+    }
 }
 
 void AbstractPythonInterface::addScript(const QString &script)
@@ -342,7 +347,7 @@ void AbstractPythonInterface::checkDependenciesConcurrently()
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QtConcurrent::run(this, &AbstractPythonInterface::checkDependencies, false, false);
 #else
-    QtConcurrent::run(&AbstractPythonInterface::checkDependencies, this, false, false);
+    (void)QtConcurrent::run(&AbstractPythonInterface::checkDependencies, this, false, false);
 #endif
 }
 
@@ -351,7 +356,7 @@ void AbstractPythonInterface::checkVersionsConcurrently()
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QtConcurrent::run(this, &AbstractPythonInterface::checkVersions, true);
 #else
-    QtConcurrent::run(&AbstractPythonInterface::checkVersions, this, true);
+    (void)QtConcurrent::run(&AbstractPythonInterface::checkVersions, this, true);
 #endif
 }
 
@@ -363,12 +368,22 @@ void AbstractPythonInterface::checkDependencies(bool force, bool async)
     }
     // Force check, reset flag
     m_missing.clear();
+    m_optionalMissing.clear();
     const QString output = runPackageScript(QStringLiteral("--check"));
+    QStringList missingDeps = output.split(QStringLiteral("Missing: "));
+    QStringList outputMissing;
+    for (auto &m : missingDeps) {
+        outputMissing << m.simplified();
+    }
     QStringList messages;
     if (!output.isEmpty()) {
         // We have missing dependencies
         for (auto i : m_dependencies.keys()) {
-            if (output.contains(i)) {
+            if (outputMissing.contains(i)) {
+                if (m_optionalDeps.contains(i)) {
+                    m_optionalMissing << i;
+                    continue;
+                }
                 m_missing.append(i);
                 if (m_dependencies.value(i).isEmpty()) {
                     messages.append(xi18n("The <application>%1</application> python module is required.", i));
@@ -441,7 +456,7 @@ void AbstractPythonInterface::runConcurrentScript(const QString &script, QString
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QtConcurrent::run(this, &AbstractPythonInterface::runScript, script, args, QString(), true, false);
 #else
-    QtConcurrent::run(&AbstractPythonInterface::runScript, this, script, args, QString(), true, false);
+    (void)QtConcurrent::run(&AbstractPythonInterface::runScript, this, script, args, QString(), true, false);
 #endif
 }
 
@@ -491,7 +506,10 @@ void AbstractPythonInterface::checkVersions(bool signalOnResult)
             name = name.simplified().section(QLatin1Char(' '), 1, 1);
             QString version = raw.at(i + 1);
             version = version.simplified().section(QLatin1Char(' '), 0, 0);
-            versions.append(QString("%1 %2").arg(name, version));
+            if (version == QLatin1String("missing")) {
+                version = i18nc("@item:intext indicates a missing dependency", "missing (optional)");
+            }
+            versions.append(QString("<b>%1</b> %2").arg(name, version));
             if (m_versions->contains(name)) {
                 (*m_versions)[name.toLower()] = version;
             } else {
@@ -499,7 +517,6 @@ void AbstractPythonInterface::checkVersions(bool signalOnResult)
             }
         }
     }
-    qDebug() << "::: CHECKING DEPENDENCIES... VERSION FOUND: " << versions;
     if (signalOnResult) {
         Q_EMIT checkVersionsResult(versions);
     }
@@ -519,7 +536,7 @@ QString AbstractPythonInterface::runPackageScript(const QString &mode, bool conc
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QtConcurrent::run(this, &AbstractPythonInterface::runScript, QStringLiteral("checkpackages.py"), m_dependencies.keys(), mode, concurrent, true);
 #else
-        QtConcurrent::run(&AbstractPythonInterface::runScript, this, QStringLiteral("checkpackages.py"), m_dependencies.keys(), mode, concurrent, true);
+        (void)QtConcurrent::run(&AbstractPythonInterface::runScript, this, QStringLiteral("checkpackages.py"), m_dependencies.keys(), mode, concurrent, true);
 #endif
         return {};
     } else {
@@ -610,4 +627,9 @@ bool AbstractPythonInterface::removePythonVenv()
 bool AbstractPythonInterface::installInProcess() const
 {
     return installInProgress;
+}
+
+bool AbstractPythonInterface::optionalDependencyAvailable(const QString &dependency) const
+{
+    return !m_optionalMissing.contains(dependency);
 }

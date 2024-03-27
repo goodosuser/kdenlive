@@ -573,7 +573,7 @@ void ProjectClip::setThumbnail(const QImage &img, int in, int out, bool inCache)
         font.setBold(true);
         p.setFont(font);
         p.setPen(Qt::black);
-        p.drawText(r, Qt::AlignCenter, i18nc("The first letter of Proxy, used as abbreviation", "P"));
+        p.drawText(r, Qt::AlignCenter, i18nc("@label The first letter of Proxy, used as abbreviation", "P"));
     }
     m_thumbnail = QIcon(thumb);
     if (auto ptr = m_model.lock()) {
@@ -833,7 +833,8 @@ std::unique_ptr<Mlt::Producer> ProjectClip::getThumbProducer()
     QMutexLocker lock(&m_thumbMutex);
     std::unique_ptr<Mlt::Producer> thumbProd;
     if (!m_thumbXml.isEmpty()) {
-        thumbProd.reset(new Mlt::Producer(pCore->thumbProfile(), "xml-string", m_thumbXml.toUtf8().constData()));
+        QMutexLocker lock(&pCore->xmlMutex);
+        thumbProd.reset(new Mlt::Producer(pCore->thumbProfile(), "xml-string", m_thumbXml.constData()));
         return thumbProd;
     }
     if (KdenliveSettings::gpu_accel()) {
@@ -849,6 +850,7 @@ std::unique_ptr<Mlt::Producer> ProjectClip::getThumbProducer()
             return nullptr;
         }
         cloneProducerToFile(m_sequenceThumbFile.fileName(), true);
+        QMutexLocker lock(&pCore->xmlMutex);
         thumbProd.reset(new Mlt::Producer(pCore->thumbProfile(), "consumer", m_sequenceThumbFile.fileName().toUtf8().constData()));
     } else {
         QString mltService = m_masterProducer->get("mlt_service");
@@ -1371,13 +1373,8 @@ std::pair<std::shared_ptr<Mlt::Producer>, bool> ProjectClip::giveMasterAndGetTim
 void ProjectClip::cloneProducerToFile(const QString &path, bool thumbsProducer)
 {
     QMutexLocker lk(&m_producerMutex);
+    QMutexLocker lock(&pCore->xmlMutex);
     Mlt::Consumer c(m_masterProducer->get_profile(), "xml", path.toUtf8().constData());
-    // Mlt::Service s(m_masterProducer->get_service());
-    /*int ignore = s.get_int("ignore_points");
-    if (ignore) {
-        s.set("ignore_points", 0);
-    }
-    c.connect(s);*/
     c.set("time_format", "frames");
     c.set("no_meta", 1);
     c.set("no_root", 1);
@@ -1389,7 +1386,8 @@ void ProjectClip::cloneProducerToFile(const QString &path, bool thumbsProducer)
     if (!thumbsProducer) {
         c.set("store", "kdenlive");
     }
-    c.connect(m_masterProducer->parent());
+    Mlt::Service s(m_masterProducer->get_service());
+    c.connect(s);
     c.run();
     /*if (ignore) {
         s.set("ignore_points", ignore);
@@ -1426,11 +1424,11 @@ void ProjectClip::saveZone(QPoint zone, const QDir &dir)
             return;
         }
     }
+    QReadLocker lock(&m_producerLock);
     Mlt::Consumer xmlConsumer(pCore->getProjectProfile(), "xml", fullPath.toUtf8().constData());
     xmlConsumer.set("terminate_on_pause", 1);
     xmlConsumer.set("store", "kdenlive");
     xmlConsumer.set("no_meta", 1);
-    QReadLocker lock(&m_producerLock);
     if (m_clipType != ClipType::Timeline) {
         Mlt::Producer prod(m_masterProducer->parent());
         std::unique_ptr<Mlt::Producer> prod2(prod.cut(zone.x(), zone.y()));
@@ -1441,6 +1439,7 @@ void ProjectClip::saveZone(QPoint zone, const QDir &dir)
     } else {
         xmlConsumer.connect(m_masterProducer->parent());
     }
+    QMutexLocker xmlLock(&pCore->xmlMutex);
     xmlConsumer.run();
 }
 
@@ -1448,6 +1447,7 @@ std::shared_ptr<Mlt::Producer> ProjectClip::cloneProducer(bool removeEffects, bo
 {
     Q_UNUSED(timelineProducer);
     QMutexLocker lk(&m_producerMutex);
+    QMutexLocker lock(&pCore->xmlMutex);
     Mlt::Consumer c(pCore->getProjectProfile(), "xml", "string");
     Mlt::Service s(m_masterProducer->get_service());
     m_masterProducer->lock();
@@ -1466,6 +1466,7 @@ std::shared_ptr<Mlt::Producer> ProjectClip::cloneProducer(bool removeEffects, bo
     if (ignore) {
         s.set("ignore_points", ignore);
     }
+    lock.unlock();
     m_masterProducer->unlock();
     const QByteArray clipXml = c.get("string");
     std::shared_ptr<Mlt::Producer> prod(new Mlt::Producer(pCore->getProjectProfile(), "xml-string", clipXml.constData()));
@@ -1528,6 +1529,7 @@ std::shared_ptr<Mlt::Producer> ProjectClip::cloneProducer(bool removeEffects, bo
 
 std::shared_ptr<Mlt::Producer> ProjectClip::cloneProducer(const std::shared_ptr<Mlt::Producer> &producer)
 {
+    QMutexLocker lock(&pCore->xmlMutex);
     Mlt::Consumer c(pCore->getProjectProfile(), "xml", "string");
     Mlt::Service s(producer->get_service());
     int ignore = s.get_int("ignore_points");
@@ -1541,7 +1543,7 @@ std::shared_ptr<Mlt::Producer> ProjectClip::cloneProducer(const std::shared_ptr<
     c.set("no_profile", 1);
     c.set("root", "/");
     c.set("store", "kdenlive");
-    c.start();
+    c.run();
     if (ignore) {
         s.set("ignore_points", ignore);
     }
@@ -2656,11 +2658,11 @@ void ProjectClip::replaceInTimeline()
     if (pushUndo && !m_resetTimelineOccurences) {
         pCore->pushUndo(undo, redo, i18n("Adjust timeline clips"));
     }
+    m_resetTimelineOccurences = false;
     // Update each sequence clips that embedded this clip
     if (!sequencesToUpdate.isEmpty()) {
         Q_EMIT pCore->bin()->requestUpdateSequences(sequencesToUpdate);
     }
-    m_resetTimelineOccurences = false;
 }
 
 void ProjectClip::updateTimelineClips(const QVector<int> &roles)

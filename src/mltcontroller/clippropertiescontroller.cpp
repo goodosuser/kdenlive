@@ -165,10 +165,18 @@ public:
         }
         if (decode) {
             KFileMetaData::PropertyInfo info(property);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             if (info.valueType() == QVariant::DateTime) {
+#else
+            if (info.valueType() == QMetaType::Type::QDateTime) {
+#endif
                 QLocale locale;
                 new QTreeWidgetItem(m_tree, {info.displayName(), locale.toDateTime(value.toString(), QLocale::ShortFormat).toString()});
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             } else if (info.valueType() == QVariant::Int) {
+#else
+                } else if (info.valueType() == QMetaType::Type::Int) {
+#endif
                 int val = value.toInt();
                 if (property == KFileMetaData::Property::BitRate) {
                     // Adjust unit for bitrate
@@ -177,7 +185,11 @@ public:
                 } else {
                     new QTreeWidgetItem(m_tree, QStringList{info.displayName(), QString::number(val)});
                 }
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             } else if (info.valueType() == QVariant::Double) {
+#else
+                } else if (info.valueType() == QMetaType::Type::Double) {
+#endif
                 new QTreeWidgetItem(m_tree, QStringList{info.displayName(), QString::number(value.toDouble())});
             } else {
                 new QTreeWidgetItem(m_tree, QStringList{info.displayName(), value.toString()});
@@ -482,7 +494,7 @@ ClipPropertiesController::ClipPropertiesController(const QString &clipName, Clip
         QAction *ac = new QAction(QIcon::fromTheme(QStringLiteral("document-open")), i18n("Open folder…"), this);
         connect(ac, &QAction::triggered, this, [this]() {
             QString pxy = m_properties->get("kdenlive:proxy");
-            QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(pxy).path()));
+            KIO::highlightInFileManager({QUrl::fromLocalFile(pxy)});
         });
         pMenu->addAction(ac);
         ac = new QAction(QIcon::fromTheme(QStringLiteral("media-playback-start")), i18n("Play proxy clip"), this);

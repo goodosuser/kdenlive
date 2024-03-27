@@ -19,6 +19,7 @@ SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 #include <KDirLister>
 #include <KFileFilterCombo>
 #include <KFilePlacesModel>
+#include <KFilePreviewGenerator>
 #include <KIconLoader>
 #include <KLocalizedString>
 #include <KRecentDirs>
@@ -255,6 +256,18 @@ void MediaBrowser::connectView()
 {
     connect(m_op->view(), &QAbstractItemView::doubleClicked, this, &MediaBrowser::slotViewDoubleClicked);
     m_op->view()->installEventFilter(this);
+    m_op->setInlinePreviewShown(true);
+
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    // Unconditionnaly enable video thumbnails on Windows/Mac as user can't edit the global KDE settings
+    if (m_op->previewGenerator()) {
+        QStringList enabledPlugs = m_op->previewGenerator()->enabledPlugins();
+        if (!enabledPlugs.contains(QStringLiteral("ffmpegthumbs"))) {
+            enabledPlugs << QStringLiteral("ffmpegthumbs");
+            m_op->previewGenerator()->setEnabledPlugins(enabledPlugs);
+        }
+    }
+#endif
     setFocusProxy(m_op->view());
     setFocusPolicy(Qt::ClickFocus);
 }

@@ -749,7 +749,7 @@ void TimelineItemModel::buildTrackCompositing(bool rebuild)
     }
     QString composite = TransitionsRepository::get()->getCompositingTransition();
     bool hasMixer = pCore->mixer() != nullptr;
-    if (hasMixer) {
+    if (hasMixer && !m_closing) {
         pCore->mixer()->cleanup();
     }
     int videoTracks = 0;
@@ -849,8 +849,6 @@ void TimelineItemModel::passSequenceProperties(const QMap<QString, QString> base
     tractor()->set("kdenlive:sequenceproperties.hasAudio", tracks.first > 0 ? 1 : 0);
     tractor()->set("kdenlive:sequenceproperties.hasVideo", tracks.second > 0 ? 1 : 0);
     tractor()->set("kdenlive:sequenceproperties.tracksCount", tracks.first + tracks.second);
-
-    tractor()->set("kdenlive:sequenceproperties.position", pCore->getMonitorPosition());
 
     if (hasTimelinePreview()) {
         QPair<QStringList, QStringList> chunks = previewManager()->previewChunks();

@@ -158,6 +158,7 @@ void ProjectManager::init(const QUrl &projectUrl, const QString &clipList)
     m_notesPlugin = new NotesPlugin(this);
 
     m_autoSaveTimer.setSingleShot(true);
+    m_autoSaveTimer.setInterval(3000);
     connect(&m_autoSaveTimer, &QTimer::timeout, this, &ProjectManager::slotAutoSave);
 }
 
@@ -462,6 +463,9 @@ bool ProjectManager::closeCurrentDocument(bool saveChanges, bool quit)
     if (m_project) {
         pCore->taskManager.slotCancelJobs(true);
         m_project->closing = true;
+        if (m_activeTimelineModel) {
+            m_activeTimelineModel->m_closing = true;
+        }
         if (guiConstructed && !quit && !qApp->isSavingSession()) {
             pCore->bin()->abortOperations();
         }
@@ -886,21 +890,7 @@ void ProjectManager::doOpenFile(const QUrl &url, KAutoSaveFile *stale, bool isBa
     if (!timelineResult) {
         Q_EMIT pCore->loadingMessageHide();
         // Don't propose to save corrupted doc
-        m_project->setModified(false);
-        pCore->monitorManager()->projectMonitor()->locked = false;
-        int answer = KMessageBox::warningContinueCancelList(pCore->window(), i18n("Error opening file"), m_mltWarnings, i18n("Error opening file"),
-                                                            KGuiItem(i18n("Open Backup")), KStandardGuiItem::cancel(), QString(), KMessageBox::Notify);
-        if (answer == KMessageBox::Continue) {
-            // Open Backup
-            m_mltWarnings.clear();
-            delete m_project;
-            m_project = nullptr;
-            slotOpenBackup(url);
-            return;
-        }
-        m_mltWarnings.clear();
-        // Open default blank document
-        newFile(false);
+        abortProjectLoad(url);
         return;
     }
     m_mltWarnings.clear();
@@ -918,7 +908,10 @@ void ProjectManager::doOpenFile(const QUrl &url, KAutoSaveFile *stale, bool isBa
         openedUuids << uuid;
         const QString binId = pCore->projectItemModel()->getSequenceId(uuid);
         if (!binId.isEmpty()) {
-            openTimeline(binId, uuid);
+            if (!openTimeline(binId, uuid)) {
+                abortProjectLoad(url);
+                return;
+            }
         }
         Q_EMIT pCore->loadingMessageIncrease();
         qApp->processEvents();
@@ -977,7 +970,10 @@ void ProjectManager::doOpenFile(const QUrl &url, KAutoSaveFile *stale, bool isBa
                 return;
             }
         } else {
-            openTimeline(binId, activeUuid);
+            if (!openTimeline(binId, activeUuid)) {
+                abortProjectLoad(url);
+                return;
+            }
         }
     }
     pCore->window()->connectDocument();
@@ -1000,6 +996,27 @@ void ProjectManager::doOpenFile(const QUrl &url, KAutoSaveFile *stale, bool isBa
     checkProjectWarnings();
     pCore->projectItemModel()->missingClipTimer.start();
     Q_EMIT pCore->loadingMessageHide();
+}
+
+void ProjectManager::abortProjectLoad(const QUrl &url)
+{
+    m_project->setModified(false);
+    Q_EMIT pCore->loadingMessageHide();
+    pCore->monitorManager()->projectMonitor()->locked = false;
+    int answer = KMessageBox::warningContinueCancelList(pCore->window(), i18n("Error opening file"), m_mltWarnings, i18n("Error opening file"),
+                                                        KGuiItem(i18n("Open Backup")), KStandardGuiItem::cancel(), QString(), KMessageBox::Notify);
+    if (answer == KMessageBox::Continue) {
+        // Open Backup
+        m_mltWarnings.clear();
+        delete m_project;
+        m_project = nullptr;
+        if (slotOpenBackup(url)) {
+            return;
+        }
+    }
+    m_mltWarnings.clear();
+    // Open default blank document
+    newFile(false);
 }
 
 void ProjectManager::doOpenFileHeadless(const QUrl &url)
@@ -1118,7 +1135,7 @@ void ProjectManager::slotStartAutoSave()
         m_autoSaveTimer.stop();
         slotAutoSave();
     } else {
-        m_autoSaveTimer.start(3000); // will trigger slotAutoSave() in 3 seconds
+        m_autoSaveTimer.start(); // will trigger slotAutoSave() in 3 seconds
     }
 }
 
@@ -1216,7 +1233,7 @@ void ProjectManager::slotAddTextNote(const QString &text)
 
 void ProjectManager::prepareSave()
 {
-    pCore->projectItemModel()->saveDocumentProperties(pCore->window()->getCurrentTimeline()->controller()->documentProperties(), m_project->metadata());
+    pCore->projectItemModel()->saveDocumentProperties(pCore->currentDoc()->documentProperties(), m_project->metadata());
     pCore->bin()->saveFolderState();
     pCore->projectItemModel()->saveProperty(QStringLiteral("kdenlive:documentnotes"), documentNotes());
     pCore->projectItemModel()->saveProperty(QStringLiteral("kdenlive:docproperties.opensequences"), pCore->window()->openedSequences().join(QLatin1Char(';')));
@@ -1413,9 +1430,10 @@ bool ProjectManager::updateTimeline(bool createNewTab, const QString &chunks, co
 {
     pCore->taskManager.slotCancelJobs();
     const QUuid uuid = m_project->uuid();
-
+    QMutexLocker lock(&pCore->xmlMutex);
     std::unique_ptr<Mlt::Producer> xmlProd(
         new Mlt::Producer(pCore->getProjectProfile().get_profile(), "xml-string", m_project->getAndClearProjectXml().constData()));
+    lock.unlock();
     Mlt::Service s(*xmlProd.get());
     Mlt::Tractor tractor(s);
     if (xmlProd->property_exists("kdenlive:projectTractor")) {
@@ -1498,7 +1516,8 @@ bool ProjectManager::updateTimeline(bool createNewTab, const QString &chunks, co
     timelineModel->setUndoStack(m_project->commandStack());
 
     // Reset locale to C to ensure numbers are serialised correctly
-    LocaleHandling::resetLocale();
+    // QMutexLocker lock(&pCore->xmlMutex);
+    // LocaleHandling::resetLocale();
     return true;
 }
 
@@ -1811,7 +1830,7 @@ bool ProjectManager::openTimeline(const QString &id, const QUuid &uuid, int posi
         m_project->setSequenceProperty(uuid, QStringLiteral("position"), position);
     }
     if (pCore->window() && pCore->window()->raiseTimeline(uuid)) {
-        return false;
+        return true;
     }
     if (!duplicate && existingModel == nullptr) {
         existingModel = m_project->getTimeline(uuid, true);
@@ -1826,6 +1845,10 @@ bool ProjectManager::openTimeline(const QString &id, const QUuid &uuid, int posi
     bool internalLoad = false;
     if (tc != nullptr && tc->is_valid()) {
         internalLoad = true;
+        if (tc->count() == 0) {
+            // Corrupted timeline, abort and propose to open a backup
+            return false;
+        }
         if (duplicate) {
             pCore->projectItemModel()->setExtraTimelineSaved(uuid.toString());
         }
@@ -1834,7 +1857,9 @@ bool ProjectManager::openTimeline(const QString &id, const QUuid &uuid, int posi
         if (xmlProd == nullptr || !xmlProd->is_valid()) {
             qDebug() << "::: LOADING EXTRA TIMELINE ERROR\n\nXXXXXXXXXXXXXXXXXXXXXXX";
             pCore->displayBinMessage(i18n("Cannot create a timeline from this clip:\n%1", clip->url()), KMessageWidget::Information);
-            m_autoSaveTimer.start();
+            if (m_project->isModified()) {
+                m_autoSaveTimer.start();
+            }
             return false;
         }
     }
@@ -1918,7 +1943,9 @@ bool ProjectManager::openTimeline(const QString &id, const QUuid &uuid, int posi
             // if (!constructTimelineFromMelt(timelineModel, *tractor.get(), m_progressDialog, m_project->modifiedDecimalPoint(), chunks, dirty)) {
             //  TODO: act on project load failure
             qDebug() << "// Project failed to load!!";
-            m_autoSaveTimer.start();
+            if (m_project->isModified()) {
+                m_autoSaveTimer.start();
+            }
             return false;
         }
         qDebug() << "::: SEQUENCE LOADED WITH TRACKS: " << timelineModel->tractor()->count() << "\nZZZZZZZZZZZZ";
@@ -1978,7 +2005,9 @@ bool ProjectManager::openTimeline(const QString &id, const QUuid &uuid, int posi
     }*/
     pCore->window()->raiseTimeline(timeline->getUuid());
     pCore->bin()->updateTargets();
-    m_autoSaveTimer.start();
+    if (m_project->isModified()) {
+        m_autoSaveTimer.start();
+    }
     return true;
 }
 
@@ -2008,9 +2037,6 @@ void ProjectManager::doSyncTimeline(std::shared_ptr<TimelineItemModel> model, bo
         int position = -1;
         if (model == m_activeTimelineModel) {
             position = pCore->getMonitorPosition();
-            if (pCore->window()) {
-                pCore->window()->getCurrentTimeline()->controller()->saveSequenceProperties();
-            }
         }
         const QUuid &uuid = model->uuid();
         if (refresh) {

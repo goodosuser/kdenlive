@@ -244,6 +244,8 @@ bool TimelineFunctions::requestClipCut(const std::shared_ptr<TimelineItemModel> 
             trackToSelect = timeline->getItemTrackId(clipId);
         }
     }
+    // We need to call clearSelection before attempting the split or the group split will be corrupted by the selection group (no undo support)
+    timeline->requestClearSelection();
 
     std::unordered_set<int> topElements;
     std::transform(clips.begin(), clips.end(), std::inserter(topElements, topElements.begin()), [&](int id) { return timeline->m_groups->getRootId(id); });
@@ -275,9 +277,6 @@ bool TimelineFunctions::requestClipCut(const std::shared_ptr<TimelineItemModel> 
     if (clipsToCut.isEmpty()) {
         return true;
     }
-
-    // We need to call clearSelection before attempting the split or the group split will be corrupted by the selection group (no undo support)
-    timeline->requestClearSelection();
 
     for (int cid : qAsConst(clipsToCut)) {
         count++;
@@ -1575,6 +1574,7 @@ void TimelineFunctions::saveTimelineSelection(const std::shared_ptr<TimelineItem
         }
         ix++;
     }
+    QMutexLocker lock(&pCore->xmlMutex);
     Mlt::Consumer xmlConsumer(*newTractor.profile(), ("xml:" + fullPath).toUtf8().constData());
     xmlConsumer.set("terminate_on_pause", 1);
     xmlConsumer.connect(newTractor);
@@ -2218,7 +2218,9 @@ bool TimelineFunctions::pasteClips(const std::shared_ptr<TimelineItemModel> &tim
 
             waitingBinIds << clipId;
             clipsImported = true;
+            QMutexLocker lock(&pCore->xmlMutex);
             std::shared_ptr<Mlt::Producer> xmlProd(new Mlt::Producer(pCore->getProjectProfile(), "xml-string", doc.toString().toUtf8().constData()));
+            lock.unlock();
             if (!xmlProd->is_valid()) {
                 qDebug() << ":::: CANNOT IMPORT SEQUENCE: " << clipId;
                 continue;

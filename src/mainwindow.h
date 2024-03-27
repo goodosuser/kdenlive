@@ -134,6 +134,7 @@ public:
     TimelineWidget *getCurrentTimeline() const;
     /** @brief Returns a pointer to the timeline with @uuid */
     TimelineWidget *getTimeline(const QUuid uuid) const;
+    void getSequenceProperties(const QUuid &uuid, QMap<QString, QString> &props);
     void closeTimelineTab(const QUuid uuid);
     /** @brief Returns a list of opened tabs uuids */
     const QStringList openedSequences() const;
@@ -153,6 +154,8 @@ public:
     void addBin(Bin *bin, const QString &binName = QString());
     /** @brief Get the main (first) bin*/
     Bin *getBin();
+    /** @brief Block/Unblock all bin selection signals*/
+    void blockBins(bool block);
     /** @brief Get the active (focused) bin or first one if none is active*/
     Bin *activeBin();
     /** @brief Ensure all bin widgets are tabbed together*/

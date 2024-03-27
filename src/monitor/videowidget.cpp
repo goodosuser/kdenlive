@@ -79,17 +79,17 @@ VideoWidget::VideoWidget(int id, QObject *parent)
     , m_producer(nullptr)
     , m_id(id)
     , m_rulerHeight(int(QFontInfo(QFontDatabase::systemFont(QFontDatabase::SmallestReadableFont)).pixelSize() * 1.5))
-    , m_initSem(0)
+    , m_sendFrame(false)
     , m_analyseSem(1)
+    , m_zoom(1.0f)
+    , m_profileSize(1920, 1080)
     , m_isInitialized(false)
+    , m_initSem(0)
     , m_maxProducerPosition(0)
     , m_glslManager(nullptr)
     , m_frameRenderer(nullptr)
-    , m_zoom(1.0f)
-    , m_profileSize(1920, 1080)
     , m_colorSpace(601)
     , m_dar(1.78)
-    , m_sendFrame(false)
     , m_isZoneMode(false)
     , m_isLoopMode(false)
     , m_loopIn(0)
@@ -240,10 +240,15 @@ void VideoWidget::resizeEvent(QResizeEvent *event)
 {
     QQuickWidget::resizeEvent(event);
     if (refreshZoom) {
-        setZoom(m_zoom, true);
+        QMetaObject::invokeMethod(this, "forceRefreshZoom", Qt::QueuedConnection);
         refreshZoom = false;
     }
     resizeVideo(event->size().width(), event->size().height());
+}
+
+void VideoWidget::forceRefreshZoom()
+{
+    setZoom(m_zoom, true);
 }
 
 void VideoWidget::clear()
@@ -302,6 +307,9 @@ void VideoWidget::requestSeek(int position, bool noAudioScrub)
     m_producer->seek(position);
     if (!qFuzzyIsNull(m_producer->get_speed())) {
         m_consumer->purge();
+    }
+    if (!m_consumer) {
+        return;
     }
     restartConsumer();
     m_consumer->set("refresh", 1);
