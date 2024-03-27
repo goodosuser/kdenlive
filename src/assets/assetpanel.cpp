@@ -88,7 +88,7 @@ AssetPanel::AssetPanel(QWidget *parent)
     m_applyEffectGroups = new QAction(i18n("Apply effect change to all clips in the group"), this);
     m_applyEffectGroups->setCheckable(true);
     m_applyEffectGroups->setChecked(KdenliveSettings::applyEffectParamsToGroup());
-    m_applyEffectGroups->setIcon(QIcon::fromTheme(QStringLiteral("edit-copy")));
+    m_applyEffectGroups->setIcon(QIcon::fromTheme(QStringLiteral("link")));
     m_applyEffectGroups->setToolTip(i18n("Apply effect change to all clips in the group…"));
     m_applyEffectGroups->setWhatsThis(
         xi18nc("@info:whatsthis",
