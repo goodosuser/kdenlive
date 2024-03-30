@@ -319,7 +319,7 @@ public:
     void groupAssetCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
                            QUndoCommand *command);
     void groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
-                                   const QVariant &value, QUndoCommand *command);
+                                   const QVariant &value, int ix, QUndoCommand *command);
     /** @brief A list of markers type categories {marker type, {color, category name}} */
     struct MarkerCategory
     {

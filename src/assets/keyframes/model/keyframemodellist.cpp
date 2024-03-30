@@ -289,7 +289,7 @@ bool KeyframeModelList::updateKeyframe(GenTime oldPos, GenTime pos, const QVaria
     return applyOperation(op, logUndo ? i18nc("@action", "Move keyframe") : QString());
 }
 
-bool KeyframeModelList::updateKeyframe(GenTime pos, const QVariant &value, const QPersistentModelIndex &index, QUndoCommand *parentCommand)
+bool KeyframeModelList::updateKeyframe(GenTime pos, const QVariant &value, int ix, const QPersistentModelIndex &index, QUndoCommand *parentCommand)
 {
     if (singleKeyframe()) {
         bool ok = false;
@@ -299,7 +299,7 @@ bool KeyframeModelList::updateKeyframe(GenTime pos, const QVariant &value, const
     if (auto ptr = m_model.lock()) {
         const QVariant previousValue = getKeyModel(index)->getInterpolatedValue(pos);
         auto *command = new AssetKeyframeCommand(ptr, index, value, pos, parentCommand);
-        pCore->groupAssetKeyframeCommand(ptr->getOwnerId(), ptr->getAssetId(), index, pos, previousValue, value, command);
+        pCore->groupAssetKeyframeCommand(ptr->getOwnerId(), ptr->getAssetId(), index, pos, previousValue, value, ix, command);
         if (parentCommand == nullptr) {
             pCore->pushUndo(command);
         } // clang-tidy: else "command" is leaked? no because is was pushed to parentCommand

@@ -145,7 +145,8 @@ public:
     void passEffects(Mlt::Producer *producer, const QString &exception = QString());
 
     void applyAssetCommand(int row, const QModelIndex &index, const QString &previousValue, QString value, QUndoCommand *command);
-    void applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, const QVariant &value, QUndoCommand *command);
+    void applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, QVariant value, int ix,
+                                   QUndoCommand *command);
 
 public Q_SLOTS:
     /** @brief Delete an effect from the stack */

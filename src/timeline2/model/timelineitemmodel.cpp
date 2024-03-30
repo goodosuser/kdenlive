@@ -977,7 +977,7 @@ void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &asset
 }
 
 void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos,
-                                                           const QVariant &previousValue, const QVariant &value, QUndoCommand *command)
+                                                           const QVariant &previousValue, const QVariant &value, int ix, QUndoCommand *command)
 {
     int gid = m_groups->getRootId(cid);
     if (gid > -1) {
@@ -993,7 +993,7 @@ void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QStrin
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->m_effectStack->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, command);
+                    clip->m_effectStack->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, ix, command);
                 }
             }
         }

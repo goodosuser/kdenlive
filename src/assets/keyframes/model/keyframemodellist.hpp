@@ -69,7 +69,7 @@ public:
        @param value is the new value of the param
        @param index is the index of the wanted keyframe
     */
-    bool updateKeyframe(GenTime pos, const QVariant &value, const QPersistentModelIndex &index, QUndoCommand *parentCommand = nullptr);
+    bool updateKeyframe(GenTime pos, const QVariant &value, int ix, const QPersistentModelIndex &index, QUndoCommand *parentCommand = nullptr);
     /** @brief updates the value of a keyframe which contains multiple params, like Lift/Gamma/Gain
        @param pos is the position of the keyframe
        @param sourceValues is the list of previous values (used when undoing)

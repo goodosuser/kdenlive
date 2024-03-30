@@ -6145,7 +6145,7 @@ void Bin::applyClipAssetGroupCommand(int cid, const QString &assetId, const QMod
 }
 
 void Bin::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
-                                             const QVariant &value, QUndoCommand *command)
+                                             const QVariant &value, int ix, QUndoCommand *command)
 {
     QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
     if (clips.size() < 2) {
@@ -6157,7 +6157,7 @@ void Bin::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, co
         }
         int assetRow = c->getEffectStack()->effectRow(assetId);
         if (assetRow > -1) {
-            c->getEffectStack()->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, command);
+            c->getEffectStack()->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, ix, command);
         }
     }
 }

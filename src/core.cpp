@@ -1505,18 +1505,18 @@ void Core::groupAssetCommand(const ObjectId &id, const QString &assetId, const Q
 }
 
 void Core::groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
-                                     const QVariant &value, QUndoCommand *command)
+                                     const QVariant &value, int ix, QUndoCommand *command)
 {
     if (KdenliveSettings::applyEffectParamsToGroup()) {
         switch (id.type) {
         case KdenliveObjectType::TimelineClip:
             if (auto tl = currentDoc()->getTimeline(id.uuid)) {
-                tl->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+                tl->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, ix, command);
             }
             break;
         case KdenliveObjectType::BinClip:
             if (bin() != nullptr) {
-                bin()->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+                bin()->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, ix, command);
             }
             break;
         default:

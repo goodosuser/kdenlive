@@ -374,7 +374,7 @@ public:
     void applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
                                     QUndoCommand *command);
     void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
-                                            const QVariant &value, QUndoCommand *command);
+                                            const QVariant &value, int ix, QUndoCommand *command);
     int clipAssetGroupInstances(int cid, const QString &assetId);
 
 private Q_SLOTS:

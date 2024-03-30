@@ -1581,7 +1581,7 @@ void EffectStackModel::applyAssetCommand(int row, const QModelIndex &index, cons
     new AssetCommand(effectParamModel, index, value, command);
 }
 
-void EffectStackModel::applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, const QVariant &value,
+void EffectStackModel::applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, QVariant value, int ix,
                                                  QUndoCommand *command)
 {
     auto item = getEffectStackRow(row);
@@ -1593,9 +1593,33 @@ void EffectStackModel::applyAssetKeyframeCommand(int row, const QModelIndex &ind
     const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
     if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
         const QVariant currentValue = effectParamModel->getKeyframeModel()->getKeyModel(index)->getInterpolatedValue(pos);
-        if (previousValue != currentValue) {
-            // Dont't apply change on this effect, the start value is not the same
-            return;
+        switch (ix) {
+        case -1:
+            if (previousValue != currentValue) {
+                // Dont't apply change on this effect, the start value is not the same
+                return;
+            }
+            break;
+        case 0: {
+            QStringList vals = currentValue.toString().split(QLatin1Char(' '));
+            if (!vals.isEmpty() && previousValue.toString().section(QLatin1Char(' '), 0, 0) == vals.at(0)) {
+                vals[0] = value.toString().section(QLatin1Char(' '), 0, 0);
+                value = QVariant(vals.join(QLatin1Char(' ')));
+            } else {
+                return;
+            }
+            break;
+        }
+        default: {
+            QStringList vals = currentValue.toString().split(QLatin1Char(' '));
+            if (vals.size() > ix && previousValue.toString().section(QLatin1Char(' '), ix, ix) == vals.at(ix)) {
+                vals[ix] = value.toString().section(QLatin1Char(' '), ix, ix);
+                value = QVariant(vals.join(QLatin1Char(' ')));
+            } else {
+                return;
+            }
+            break;
+        }
         }
     }
     new AssetKeyframeCommand(effectParamModel, index, value, pos, command);
