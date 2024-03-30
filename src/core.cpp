@@ -1488,11 +1488,15 @@ void Core::groupAssetCommand(const ObjectId &id, const QString &assetId, const Q
     if (KdenliveSettings::applyEffectParamsToGroup()) {
         switch (id.type) {
         case KdenliveObjectType::TimelineClip:
-            currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupCommand(id.itemId, assetId, index, previousValue, value, command);
+            if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+                tl->applyClipAssetGroupCommand(id.itemId, assetId, index, previousValue, value, command);
+            }
+            break;
         case KdenliveObjectType::BinClip:
             if (bin() != nullptr) {
                 bin()->applyClipAssetGroupCommand(id.itemId, assetId, index, previousValue, value, command);
             }
+            break;
         default:
             // Nothing to do
             return;
@@ -1506,11 +1510,15 @@ void Core::groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId,
     if (KdenliveSettings::applyEffectParamsToGroup()) {
         switch (id.type) {
         case KdenliveObjectType::TimelineClip:
-            currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+            if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+                tl->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+            }
+            break;
         case KdenliveObjectType::BinClip:
             if (bin() != nullptr) {
                 bin()->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
             }
+            break;
         default:
             return;
         }
