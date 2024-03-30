@@ -6125,3 +6125,56 @@ void Bin::transcodeUsedClips()
     }
     requestSelectionTranscoding(true);
 }
+
+void Bin::applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
+                                     QUndoCommand *command)
+{
+    QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
+    if (clips.size() < 2) {
+        return;
+    }
+    for (auto &c : clips) {
+        if (c->binId().toInt() == cid) {
+            continue;
+        }
+        int assetRow = c->getEffectStack()->effectRow(assetId);
+        if (assetRow > -1) {
+            c->getEffectStack()->applyAssetCommand(assetRow, index, previousValue, value, command);
+        }
+    }
+}
+
+void Bin::applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
+                                             const QVariant &value, QUndoCommand *command)
+{
+    QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
+    if (clips.size() < 2) {
+        return;
+    }
+    for (auto &c : clips) {
+        if (c->binId().toInt() == cid) {
+            continue;
+        }
+        int assetRow = c->getEffectStack()->effectRow(assetId);
+        if (assetRow > -1) {
+            c->getEffectStack()->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, command);
+        }
+    }
+}
+
+int Bin::clipAssetGroupInstances(int cid, const QString &assetId)
+{
+    Q_UNUSED(cid);
+    QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
+    if (clips.size() < 2) {
+        return 0;
+    }
+    int count = 0;
+    for (auto &c : clips) {
+        int assetRow = c->getEffectStack()->effectRow(assetId);
+        if (assetRow > -1) {
+            count++;
+        }
+    }
+    return count;
+}

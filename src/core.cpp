@@ -1472,17 +1472,31 @@ void Core::updateSequenceAVType(const QUuid &uuid, int tracksCount)
 
 int Core::getAssetGroupedInstance(const ObjectId &id, const QString &assetId)
 {
-    if (id.type == KdenliveObjectType::TimelineClip) {
+    switch (id.type) {
+    case KdenliveObjectType::TimelineClip:
         return currentDoc()->getTimeline(id.uuid)->clipAssetGroupInstances(id.itemId, assetId);
+    case KdenliveObjectType::BinClip:
+        return bin()->clipAssetGroupInstances(id.itemId, assetId);
+    default:
+        return 0;
     }
-    return 0;
 }
 
 void Core::groupAssetCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
                              QUndoCommand *command)
 {
     if (KdenliveSettings::applyEffectParamsToGroup()) {
-        currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupCommand(id.itemId, assetId, index, previousValue, value, command);
+        switch (id.type) {
+        case KdenliveObjectType::TimelineClip:
+            currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupCommand(id.itemId, assetId, index, previousValue, value, command);
+        case KdenliveObjectType::BinClip:
+            if (bin() != nullptr) {
+                bin()->applyClipAssetGroupCommand(id.itemId, assetId, index, previousValue, value, command);
+            }
+        default:
+            // Nothing to do
+            return;
+        }
     }
 }
 
@@ -1490,6 +1504,15 @@ void Core::groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId,
                                      const QVariant &value, QUndoCommand *command)
 {
     if (KdenliveSettings::applyEffectParamsToGroup()) {
-        currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+        switch (id.type) {
+        case KdenliveObjectType::TimelineClip:
+            currentDoc()->getTimeline(id.uuid)->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+        case KdenliveObjectType::BinClip:
+            if (bin() != nullptr) {
+                bin()->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, command);
+            }
+        default:
+            return;
+        }
     }
 }

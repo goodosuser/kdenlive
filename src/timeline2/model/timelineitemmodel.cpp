@@ -13,6 +13,7 @@
 #include "core.h"
 #include "doc/docundostack.hpp"
 #include "doc/kdenlivedoc.h"
+#include "effects/effectstack/model/effectstackmodel.hpp"
 #include "groupsmodel.hpp"
 #include "kdenlivesettings.h"
 #include "macros.hpp"
@@ -968,7 +969,7 @@ void TimelineItemModel::applyClipAssetGroupCommand(int cid, const QString &asset
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->applyAssetCommand(assetRow, index, previousValue, value, command);
+                    clip->m_effectStack->applyAssetCommand(assetRow, index, previousValue, value, command);
                 }
             }
         }
@@ -992,7 +993,7 @@ void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QStrin
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, command);
+                    clip->m_effectStack->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, command);
                 }
             }
         }

@@ -172,7 +172,7 @@ void AssetParameterView::commitChanges(const QModelIndex &index, const QString &
     const QString previousValue = m_model->data(index, AssetParameterModel::ValueRole).toString();
     auto *command = new AssetCommand(m_model, index, value);
     if (storeUndo && m_model->getOwnerId().itemId != -1) {
-        if (m_model->getOwnerId().type == KdenliveObjectType::TimelineClip) {
+        if (m_model->getOwnerId().type == KdenliveObjectType::TimelineClip || m_model->getOwnerId().type == KdenliveObjectType::BinClip) {
             pCore->groupAssetCommand(m_model->getOwnerId(), m_model->getAssetId(), index, previousValue, value, command);
         }
         pCore->pushUndo(command);

@@ -144,6 +144,9 @@ public:
     /** @brief Copy all Kdenlive effects of this track on a producer */
     void passEffects(Mlt::Producer *producer, const QString &exception = QString());
 
+    void applyAssetCommand(int row, const QModelIndex &index, const QString &previousValue, QString value, QUndoCommand *command);
+    void applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, const QVariant &value, QUndoCommand *command);
+
 public Q_SLOTS:
     /** @brief Delete an effect from the stack */
     void removeEffect(const std::shared_ptr<EffectItemModel> &effect);

@@ -4,6 +4,7 @@
 */
 #include "effectstackmodel.hpp"
 #include "assets/keyframes/model/keyframemodellist.hpp"
+#include "assets/model/assetcommand.hpp"
 #include "core.h"
 #include "doc/docundostack.hpp"
 #include "effectgroupmodel.hpp"
@@ -1558,4 +1559,44 @@ void EffectStackModel::passEffects(Mlt::Producer *producer, const QString &excep
         auto *filter = new Mlt::Filter(*ms->filter(i));
         producer->attach(*filter);
     }
+}
+
+void EffectStackModel::applyAssetCommand(int row, const QModelIndex &index, const QString &previousValue, QString value, QUndoCommand *command)
+{
+
+    auto item = getEffectStackRow(row);
+    if (!item || item->childCount() > 0) {
+        // group, error
+        return;
+    }
+    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
+    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
+    if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
+        const QString currentValue = effectParamModel->data(index, AssetParameterModel::ValueRole).toString();
+        if (previousValue != currentValue) {
+            // Dont't apply change on this effect, the start value is not the same
+            return;
+        }
+    }
+    new AssetCommand(effectParamModel, index, value, command);
+}
+
+void EffectStackModel::applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, const QVariant &value,
+                                                 QUndoCommand *command)
+{
+    auto item = getEffectStackRow(row);
+    if (!item || item->childCount() > 0) {
+        // group, error
+        return;
+    }
+    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
+    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
+    if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
+        const QVariant currentValue = effectParamModel->getKeyframeModel()->getKeyModel(index)->getInterpolatedValue(pos);
+        if (previousValue != currentValue) {
+            // Dont't apply change on this effect, the start value is not the same
+            return;
+        }
+    }
+    new AssetKeyframeCommand(effectParamModel, index, value, pos, command);
 }

@@ -371,6 +371,11 @@ public:
     const QString buildSequenceClipWithUndo(Fun &undo, Fun &redo, int aTracks = -1, int vTracks = -1, QString suggestedName = QString());
     /** @brief Returns true if the project uses a clip with variable framerate. */
     bool usesVariableFpsClip();
+    void applyClipAssetGroupCommand(int cid, const QString &assetId, const QModelIndex &index, const QString &previousValue, QString value,
+                                    QUndoCommand *command);
+    void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
+                                            const QVariant &value, QUndoCommand *command);
+    int clipAssetGroupInstances(int cid, const QString &assetId);
 
 private Q_SLOTS:
     void slotAddClip();

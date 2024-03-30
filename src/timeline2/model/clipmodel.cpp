@@ -3,7 +3,6 @@
     SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 */
 #include "clipmodel.hpp"
-#include "assets/model/assetcommand.hpp"
 #include "bin/projectclip.h"
 #include "bin/projectitemmodel.h"
 #include "clipsnapmodel.hpp"
@@ -1573,46 +1572,6 @@ void ClipModel::switchBinReference(const QString newId, const QUuid &uuid)
 int ClipModel::assetRow(const QString &assetId) const
 {
     return m_effectStack->effectRow(assetId);
-}
-
-void ClipModel::applyAssetCommand(int row, const QModelIndex &index, const QString &previousValue, QString value, QUndoCommand *command)
-{
-
-    auto item = m_effectStack->getEffectStackRow(row);
-    if (!item || item->childCount() > 0) {
-        // group, error
-        return;
-    }
-    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
-    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
-    if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
-        const QString currentValue = effectParamModel->data(index, AssetParameterModel::ValueRole).toString();
-        if (previousValue != currentValue) {
-            // Dont't apply change on this effect, the start value is not the same
-            return;
-        }
-    }
-    new AssetCommand(effectParamModel, index, value, command);
-}
-
-void ClipModel::applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, const QVariant &value,
-                                          QUndoCommand *command)
-{
-    auto item = m_effectStack->getEffectStackRow(row);
-    if (!item || item->childCount() > 0) {
-        // group, error
-        return;
-    }
-    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
-    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
-    if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
-        const QVariant currentValue = effectParamModel->getKeyframeModel()->getKeyModel(index)->getInterpolatedValue(pos);
-        if (previousValue != currentValue) {
-            // Dont't apply change on this effect, the start value is not the same
-            return;
-        }
-    }
-    new AssetKeyframeCommand(effectParamModel, index, value, pos, command);
 }
 
 std::shared_ptr<KeyframeModelList> ClipModel::getKFModel(int row)

@@ -108,8 +108,6 @@ public:
     void setGrab(bool grab) override;
     void setSelected(bool sel) override;
     int assetRow(const QString &assetId) const override;
-    void applyAssetCommand(int row, const QModelIndex &index, const QString &previousValue, QString value, QUndoCommand *command);
-    void applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, const QVariant &value, QUndoCommand *command);
     std::shared_ptr<KeyframeModelList> getKFModel(int row);
 
     /** @brief Returns an XML representation of the clip with its effects */
