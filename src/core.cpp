@@ -1524,3 +1524,24 @@ void Core::groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId,
         }
     }
 }
+
+void Core::groupAssetMultiKeyframeCommand(const ObjectId &id, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
+                                          const QStringList &sourceValues, const QStringList &values, QUndoCommand *command)
+{
+    if (KdenliveSettings::applyEffectParamsToGroup()) {
+        switch (id.type) {
+        case KdenliveObjectType::TimelineClip:
+            if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+                tl->applyClipAssetGroupMultiKeyframeCommand(id.itemId, assetId, indexes, pos, sourceValues, values, command);
+            }
+            break;
+        case KdenliveObjectType::BinClip:
+            if (bin() != nullptr) {
+                // bin()->applyClipAssetGroupMultiKeyframeCommand(id.itemId, assetId, indexes, pos, sourceValues, values, command);
+            }
+            break;
+        default:
+            return;
+        }
+    }
+}

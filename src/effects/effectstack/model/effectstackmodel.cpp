@@ -1624,3 +1624,26 @@ void EffectStackModel::applyAssetKeyframeCommand(int row, const QModelIndex &ind
     }
     new AssetKeyframeCommand(effectParamModel, index, value, pos, command);
 }
+
+void EffectStackModel::applyAssetMultiKeyframeCommand(int row, const QList<QModelIndex> &indexes, GenTime pos, const QStringList &sourceValues,
+                                                      const QStringList &values, QUndoCommand *command)
+{
+    auto item = getEffectStackRow(row);
+    if (!item || item->childCount() > 0) {
+        // group, error
+        return;
+    }
+    std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
+    const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
+    if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
+        QStringList currentValue;
+        for (auto &ix : indexes) {
+            currentValue << effectParamModel->getKeyframeModel()->getKeyModel(ix)->getInterpolatedValue(pos).toString();
+        }
+        if (sourceValues != currentValue) {
+            // Dont't apply change on this effect, the start value is not the same
+            return;
+        }
+    }
+    new AssetMultiKeyframeCommand(effectParamModel, indexes, sourceValues, values, pos, command);
+}

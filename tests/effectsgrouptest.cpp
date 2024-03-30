@@ -49,7 +49,7 @@ TEST_CASE("Effects groups", "[Effects]")
     REQUIRE(timeline->requestClipInsertion(binId, tid1, 100, cid1));
     REQUIRE(timeline->requestClipInsertion(binId, tid1, 120, cid2));
     REQUIRE(timeline->requestClipInsertion(binId, tid1, 140, cid3));
-    int gid = timeline->requestClipsGroup({cid1, cid2, cid3});
+    timeline->requestClipsGroup({cid1, cid2, cid3});
     std::shared_ptr<ProjectClip> clip = binModel->getClipByBinID(binId);
     auto model = clip->m_effectStack;
 

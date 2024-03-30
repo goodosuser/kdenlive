@@ -227,6 +227,7 @@ void AssetMultiKeyframeCommand::undo()
         indx++;
     }
     Q_EMIT m_model->getKeyframeModel()->modelChanged();
+    QUndoCommand::undo();
 }
 
 // virtual
@@ -239,6 +240,7 @@ void AssetMultiKeyframeCommand::redo()
         indx++;
     }
     Q_EMIT m_model->getKeyframeModel()->modelChanged();
+    QUndoCommand::redo();
 }
 
 // virtual

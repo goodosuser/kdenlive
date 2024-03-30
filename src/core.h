@@ -320,6 +320,8 @@ public:
                            QUndoCommand *command);
     void groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
                                    const QVariant &value, int ix, QUndoCommand *command);
+    void groupAssetMultiKeyframeCommand(const ObjectId &id, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
+                                        const QStringList &sourceValues, const QStringList &values, QUndoCommand *command);
     /** @brief A list of markers type categories {marker type, {color, category name}} */
     struct MarkerCategory
     {

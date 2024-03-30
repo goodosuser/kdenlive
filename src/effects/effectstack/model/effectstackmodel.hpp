@@ -147,6 +147,8 @@ public:
     void applyAssetCommand(int row, const QModelIndex &index, const QString &previousValue, QString value, QUndoCommand *command);
     void applyAssetKeyframeCommand(int row, const QModelIndex &index, GenTime pos, const QVariant &previousValue, QVariant value, int ix,
                                    QUndoCommand *command);
+    void applyAssetMultiKeyframeCommand(int row, const QList<QModelIndex> &indexes, GenTime pos, const QStringList &sourceValues, const QStringList &values,
+                                        QUndoCommand *command);
 
 public Q_SLOTS:
     /** @brief Delete an effect from the stack */

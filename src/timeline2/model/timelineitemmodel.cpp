@@ -1000,6 +1000,30 @@ void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QStrin
     }
 }
 
+void TimelineItemModel::applyClipAssetGroupMultiKeyframeCommand(int cid, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
+                                                                const QStringList &sourceValues, const QStringList &values, QUndoCommand *command)
+{
+    int gid = m_groups->getRootId(cid);
+    if (gid > -1) {
+        std::unordered_set<int> sub;
+        if (m_singleSelectionMode && m_currentSelection.count(cid)) {
+            sub = m_currentSelection;
+        } else {
+            sub = m_groups->getLeaves(gid);
+        }
+        sub.erase(cid);
+        for (auto &id : sub) {
+            if (isClip(id)) {
+                int assetRow = clipAssetRow(id, assetId);
+                if (assetRow > -1) {
+                    const auto clip = getClipPtr(id);
+                    clip->m_effectStack->applyAssetMultiKeyframeCommand(assetRow, indexes, pos, sourceValues, values, command);
+                }
+            }
+        }
+    }
+}
+
 QList<std::shared_ptr<KeyframeModelList>> TimelineItemModel::getGroupKeyframeModels(int cid, const QString &assetId)
 {
     QList<std::shared_ptr<KeyframeModelList>> models;

@@ -96,6 +96,8 @@ public:
                                     QUndoCommand *command);
     void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
                                             const QVariant &value, int ix, QUndoCommand *command);
+    void applyClipAssetGroupMultiKeyframeCommand(int cid, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
+                                                 const QStringList &sourceValues, const QStringList &values, QUndoCommand *command);
     QList<std::shared_ptr<KeyframeModelList>> getGroupKeyframeModels(int cid, const QString &assetId);
 
     const QString groupsData();

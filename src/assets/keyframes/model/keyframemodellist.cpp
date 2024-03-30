@@ -317,6 +317,7 @@ bool KeyframeModelList::updateMultiKeyframe(GenTime pos, const QStringList &sour
     }
     if (auto ptr = m_model.lock()) {
         auto *command = new AssetMultiKeyframeCommand(ptr, indexes, sourceValues, values, pos, parentCommand);
+        pCore->groupAssetMultiKeyframeCommand(ptr->getOwnerId(), ptr->getAssetId(), indexes, pos, sourceValues, values, command);
         if (parentCommand == nullptr) {
             pCore->pushUndo(command);
         } // clang-tidy: else "command" is leaked? no because is was pushed to parentCommand
