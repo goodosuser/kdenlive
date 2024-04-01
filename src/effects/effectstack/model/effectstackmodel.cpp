@@ -1592,6 +1592,9 @@ void EffectStackModel::applyAssetKeyframeCommand(int row, const QModelIndex &ind
     std::shared_ptr<EffectItemModel> eff = std::static_pointer_cast<EffectItemModel>(item);
     const std::shared_ptr<AssetParameterModel> effectParamModel = std::static_pointer_cast<AssetParameterModel>(eff);
     if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
+        if (!effectParamModel->getKeyframeModel()->hasKeyframe(pos.frames(pCore->getCurrentFps()))) {
+            return;
+        }
         const QVariant currentValue = effectParamModel->getKeyframeModel()->getKeyModel(index)->getInterpolatedValue(pos);
         switch (ix) {
         case -1:

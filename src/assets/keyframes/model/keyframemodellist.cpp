@@ -104,12 +104,10 @@ void KeyframeModelList::slotUpdateModels(const QModelIndex &ix1, const QModelInd
     Q_EMIT modelDisplayChanged();
 }
 
-bool KeyframeModelList::applyOperation(const std::function<bool(std::shared_ptr<KeyframeModel>, bool, Fun &, Fun &)> &op, const QString &undoString)
+bool KeyframeModelList::applyOperation(const std::function<bool(std::shared_ptr<KeyframeModel>, bool, Fun &, Fun &)> &op, Fun &undo, Fun &redo)
 {
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
-    Fun undo = []() { return true; };
-    Fun redo = []() { return true; };
 
     bool res = true;
     for (const auto &param : m_parameters) {
@@ -119,24 +117,6 @@ bool KeyframeModelList::applyOperation(const std::function<bool(std::shared_ptr<
             Q_ASSERT(undone);
             return res;
         }
-    }
-    if (KdenliveSettings::applyEffectParamsToGroup()) {
-        ObjectId id = getOwnerId();
-        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
-        for (auto km : groupedKfrModels) {
-            std::unordered_map<QPersistentModelIndex, std::shared_ptr<KeyframeModel>> params = km->getAllParameters();
-            for (const auto &param : params) {
-                res = op(param.second, true, undo, redo);
-                if (!res) {
-                    bool undone = undo();
-                    Q_ASSERT(undone);
-                    return res;
-                }
-            }
-        }
-    }
-    if (res && !undoString.isEmpty()) {
-        PUSH_UNDO(undo, redo, undoString);
     }
     return res;
 }
@@ -150,7 +130,46 @@ bool KeyframeModelList::addKeyframe(GenTime pos, KeyframeType type)
         QVariant value = param->getInterpolatedValue(pos);
         return param->addKeyframe(pos, type, value, true, undo, redo);
     };
-    return applyOperation(op, update ? i18n("Change keyframe type") : i18n("Add keyframe"));
+    const QString opText = update ? i18n("Change keyframe type") : i18n("Add keyframe");
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = applyOperation(op, undo, redo);
+    if (res && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            auto op2 = [posWithOffset, type](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) {
+                QVariant value = param->getInterpolatedValue(posWithOffset);
+                return param->addKeyframe(posWithOffset, type, value, true, undo, redo);
+            };
+            res = res && km->applyOperation(op2, undo, redo);
+        }
+    }
+    if (res) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+std::shared_ptr<KeyframeModel> KeyframeModelList::modelInTimeline() const
+{
+    if (m_inTimelineIndex.isValid()) {
+        return m_parameters.at(m_inTimelineIndex);
+    }
+    return nullptr;
+}
+
+bool KeyframeModelList::isFirstParameter(std::shared_ptr<KeyframeModel> param) const
+{
+    if (m_parameters.size() == 0) {
+        return false;
+    }
+    return m_parameters.begin()->second == param;
 }
 
 bool KeyframeModelList::addKeyframe(int frame, double val)
@@ -170,8 +189,9 @@ bool KeyframeModelList::addKeyframe(int frame, double val)
     }
     auto op = [this, pos, val, isRectParam](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) {
         QVariant value;
-        if (m_inTimelineIndex.isValid()) {
-            if (m_parameters.at(m_inTimelineIndex) == param) {
+        std::shared_ptr<KeyframeModel> timelineModel = modelInTimeline();
+        if (timelineModel) {
+            if (timelineModel == param) {
                 if (isRectParam) {
                     value = param->getInterpolatedValue(pos);
                     value = param->updateInterpolated(value, val);
@@ -181,14 +201,54 @@ bool KeyframeModelList::addKeyframe(int frame, double val)
             } else {
                 value = param->getInterpolatedValue(pos);
             }
-        } else if (m_parameters.begin()->second == param) {
+        } else if (isFirstParameter(param)) {
             value = param->getNormalizedValue(val);
         } else {
             value = param->getInterpolatedValue(pos);
         }
         return param->addKeyframe(pos, KeyframeType(KdenliveSettings::defaultkeyframeinterp()), value, true, undo, redo);
     };
-    return applyOperation(op, update ? i18n("Change keyframe type") : i18n("Add keyframe"));
+    const QString opText = update ? i18n("Change keyframe type") : i18n("Add keyframe");
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = applyOperation(op, undo, redo);
+    if (res && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            auto op2 = [km, posWithOffset, val, isRectParam](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) {
+                QVariant value;
+                std::shared_ptr<KeyframeModel> timelineModel = km->modelInTimeline();
+                if (timelineModel) {
+                    if (timelineModel == param) {
+                        if (isRectParam) {
+                            value = param->getInterpolatedValue(posWithOffset);
+                            value = param->updateInterpolated(value, val);
+                        } else {
+                            value = param->getNormalizedValue(val);
+                        }
+                    } else {
+                        value = param->getInterpolatedValue(posWithOffset);
+                    }
+                } else if (km->isFirstParameter(param)) {
+                    value = param->getNormalizedValue(val);
+                } else {
+                    value = param->getInterpolatedValue(posWithOffset);
+                }
+                return param->addKeyframe(posWithOffset, KeyframeType(KdenliveSettings::defaultkeyframeinterp()), value, true, undo, redo);
+            };
+            res = res && km->applyOperation(op2, undo, redo);
+        }
+    }
+    if (res) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool KeyframeModelList::removeKeyframe(GenTime pos)
@@ -198,7 +258,29 @@ bool KeyframeModelList::removeKeyframe(GenTime pos)
     auto op = [pos](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
         return param->removeKeyframe(pos, undo, redo, true, true, allowedToFail);
     };
-    return applyOperation(op, i18n("Delete keyframe"));
+    const QString opText = i18n("Delete keyframe");
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = applyOperation(op, undo, redo);
+    if (res && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            auto op2 = [posWithOffset](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
+                return param->removeKeyframe(posWithOffset, undo, redo, true, true, allowedToFail);
+            };
+            res = res && km->applyOperation(op2, undo, redo);
+        }
+    }
+    if (res) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool KeyframeModelList::removeKeyframeWithUndo(GenTime pos, Fun &undo, Fun &redo)
@@ -206,6 +288,18 @@ bool KeyframeModelList::removeKeyframeWithUndo(GenTime pos, Fun &undo, Fun &redo
     bool result = true;
     for (const auto &param : m_parameters) {
         result = result && param.second->removeKeyframe(pos, undo, redo);
+    }
+    if (result && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            for (const auto &param : km->getAllParameters()) {
+                result = result && param.second->removeKeyframe(posWithOffset, undo, redo);
+            }
+        }
     }
     return result;
 }
@@ -224,7 +318,23 @@ bool KeyframeModelList::removeAllKeyframes()
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
     auto op = [](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) { return param->removeAllKeyframes(undo, redo); };
-    return applyOperation(op, i18n("Delete all keyframes"));
+    const QString opText = i18n("Delete all keyframes");
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool result = applyOperation(op, undo, redo);
+    if (result && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            result = result && km->applyOperation(op, undo, redo);
+        }
+    }
+    if (result) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool KeyframeModelList::removeNextKeyframes(GenTime pos)
@@ -232,7 +342,29 @@ bool KeyframeModelList::removeNextKeyframes(GenTime pos)
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_parameters.size() > 0);
     auto op = [pos](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) { return param->removeNextKeyframes(pos, undo, redo); };
-    return applyOperation(op, i18n("Delete keyframes"));
+    const QString opText = i18n("Delete keyframes");
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = applyOperation(op, undo, redo);
+    if (res && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            auto op2 = [posWithOffset](std::shared_ptr<KeyframeModel> param, bool, Fun &undo, Fun &redo) {
+                return param->removeNextKeyframes(posWithOffset, undo, redo);
+            };
+            res = res && km->applyOperation(op2, undo, redo);
+        }
+    }
+    if (res) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool KeyframeModelList::moveKeyframe(GenTime oldPos, GenTime pos, bool logUndo, bool updateView)
@@ -242,7 +374,34 @@ bool KeyframeModelList::moveKeyframe(GenTime oldPos, GenTime pos, bool logUndo, 
     auto op = [oldPos, pos, updateView](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
         return param->moveKeyframe(oldPos, pos, QVariant(), undo, redo, updateView, allowedToFail);
     };
-    return applyOperation(op, logUndo ? i18nc("@action", "Move keyframe") : QString());
+    const QString opText = logUndo ? i18nc("@action", "Move keyframe") : QString();
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = applyOperation(op, undo, redo);
+    if (res && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        GenTime oldOffset = oldPos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime oldPosWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + oldOffset;
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            auto op2 = [oldPosWithOffset, posWithOffset, updateView](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
+                return param->moveKeyframe(oldPosWithOffset, posWithOffset, QVariant(), undo, redo, updateView, allowedToFail);
+            };
+            res = res && km->applyOperation(op2, undo, redo);
+        }
+    }
+    if (!logUndo) {
+        return res;
+    }
+    if (res) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool KeyframeModelList::moveKeyframeWithUndo(GenTime oldPos, GenTime pos, Fun &undo, Fun &redo)
@@ -250,6 +409,20 @@ bool KeyframeModelList::moveKeyframeWithUndo(GenTime oldPos, GenTime pos, Fun &u
     bool result = true;
     for (const auto &param : m_parameters) {
         result = result && param.second->moveKeyframe(oldPos, pos, QVariant(), undo, redo);
+    }
+    if (result && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        GenTime oldOffset = oldPos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime oldPosWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + oldOffset;
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            for (const auto &param : km->getAllParameters()) {
+                result = result && param.second->moveKeyframe(oldPosWithOffset, posWithOffset, QVariant(), undo, redo);
+            }
+        }
     }
     return result;
 }
@@ -269,8 +442,9 @@ bool KeyframeModelList::updateKeyframe(GenTime oldPos, GenTime pos, const QVaria
     }
     auto op = [this, oldPos, pos, normalizedVal, isRectParam](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo, Fun &redo) {
         QVariant value;
-        if (m_inTimelineIndex.isValid()) {
-            if (m_parameters.at(m_inTimelineIndex) == param) {
+        std::shared_ptr<KeyframeModel> timelineModel = modelInTimeline();
+        if (timelineModel) {
+            if (timelineModel == param) {
                 if (isRectParam) {
                     if (normalizedVal.isValid()) {
                         double newValue = normalizedVal.toDouble();
@@ -281,12 +455,54 @@ bool KeyframeModelList::updateKeyframe(GenTime oldPos, GenTime pos, const QVaria
                     value = normalizedVal;
                 }
             }
-        } else if (m_parameters.begin()->second == param) {
+        } else if (isFirstParameter(param)) {
             value = normalizedVal;
         }
         return param->moveKeyframe(oldPos, pos, value, undo, redo, true, allowedToFail);
     };
-    return applyOperation(op, logUndo ? i18nc("@action", "Move keyframe") : QString());
+    const QString opText = logUndo ? i18nc("@action", "Move keyframe") : QString();
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = applyOperation(op, undo, redo);
+    if (res && KdenliveSettings::applyEffectParamsToGroup()) {
+        ObjectId id = getOwnerId();
+        double fps = pCore->getCurrentFps();
+        GenTime offset = pos - GenTime(pCore->getItemIn(id), fps);
+        GenTime oldOffset = oldPos - GenTime(pCore->getItemIn(id), fps);
+        QList<std::shared_ptr<KeyframeModelList>> groupedKfrModels = pCore->currentDoc()->getTimeline(id.uuid)->getGroupKeyframeModels(id.itemId, getAssetId());
+        for (auto km : groupedKfrModels) {
+            GenTime oldPosWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + oldOffset;
+            GenTime posWithOffset = GenTime(pCore->getItemIn(km->getOwnerId()), fps) + offset;
+            auto op2 = [km, oldPosWithOffset, posWithOffset, normalizedVal, isRectParam](std::shared_ptr<KeyframeModel> param, bool allowedToFail, Fun &undo,
+                                                                                         Fun &redo) {
+                QVariant value;
+                std::shared_ptr<KeyframeModel> timelineModel = km->modelInTimeline();
+                if (timelineModel) {
+                    if (timelineModel == param) {
+                        if (isRectParam) {
+                            if (normalizedVal.isValid()) {
+                                double newValue = normalizedVal.toDouble();
+                                value = param->getInterpolatedValue(oldPosWithOffset);
+                                value = param->updateInterpolated(value, newValue);
+                            }
+                        } else {
+                            value = normalizedVal;
+                        }
+                    }
+                } else if (km->isFirstParameter(param)) {
+                    value = normalizedVal;
+                }
+                return param->moveKeyframe(oldPosWithOffset, posWithOffset, value, undo, redo, true, allowedToFail);
+            };
+            res = res && km->applyOperation(op2, undo, redo);
+        }
+    }
+    if (res) {
+        PUSH_UNDO(undo, redo, opText);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool KeyframeModelList::updateKeyframe(GenTime pos, const QVariant &value, int ix, const QPersistentModelIndex &index, QUndoCommand *parentCommand)

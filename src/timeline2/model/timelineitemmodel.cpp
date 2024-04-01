@@ -988,12 +988,13 @@ void TimelineItemModel::applyClipAssetGroupKeyframeCommand(int cid, const QStrin
             sub = m_groups->getLeaves(gid);
         }
         sub.erase(cid);
+        double fps = pCore->getCurrentFps();
         for (auto &id : sub) {
             if (isClip(id)) {
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->m_effectStack->applyAssetKeyframeCommand(assetRow, index, pos, previousValue, value, ix, command);
+                    clip->m_effectStack->applyAssetKeyframeCommand(assetRow, index, pos + GenTime(clip->getIn(), fps), previousValue, value, ix, command);
                 }
             }
         }
@@ -1012,12 +1013,13 @@ void TimelineItemModel::applyClipAssetGroupMultiKeyframeCommand(int cid, const Q
             sub = m_groups->getLeaves(gid);
         }
         sub.erase(cid);
+        double fps = pCore->getCurrentFps();
         for (auto &id : sub) {
             if (isClip(id)) {
                 int assetRow = clipAssetRow(id, assetId);
                 if (assetRow > -1) {
                     const auto clip = getClipPtr(id);
-                    clip->m_effectStack->applyAssetMultiKeyframeCommand(assetRow, indexes, pos, sourceValues, values, command);
+                    clip->m_effectStack->applyAssetMultiKeyframeCommand(assetRow, indexes, pos + GenTime(clip->getIn(), fps), sourceValues, values, command);
                 }
             }
         }

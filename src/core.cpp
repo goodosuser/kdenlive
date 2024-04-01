@@ -1511,6 +1511,7 @@ void Core::groupAssetKeyframeCommand(const ObjectId &id, const QString &assetId,
         switch (id.type) {
         case KdenliveObjectType::TimelineClip:
             if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+                pos -= GenTime(tl->getClipIn(id.itemId), getCurrentFps());
                 tl->applyClipAssetGroupKeyframeCommand(id.itemId, assetId, index, pos, previousValue, value, ix, command);
             }
             break;
@@ -1532,6 +1533,7 @@ void Core::groupAssetMultiKeyframeCommand(const ObjectId &id, const QString &ass
         switch (id.type) {
         case KdenliveObjectType::TimelineClip:
             if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+                pos -= GenTime(tl->getClipIn(id.itemId), getCurrentFps());
                 tl->applyClipAssetGroupMultiKeyframeCommand(id.itemId, assetId, indexes, pos, sourceValues, values, command);
             }
             break;
