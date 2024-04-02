@@ -102,7 +102,7 @@ AssetPanel::AssetPanel(QWidget *parent)
     QAction *applyToSameOnly = new QAction(i18n("Apply only to effects with same value"), this);
     applyToSameOnly->setCheckable(true);
     applyToSameOnly->setChecked(KdenliveSettings::applyEffectParamsToGroupWithSameValue());
-    connect(applyToSameOnly, &QAction::toggled, this, [this](bool enabled) { KdenliveSettings::setApplyEffectParamsToGroupWithSameValue(enabled); });
+    connect(applyToSameOnly, &QAction::toggled, this, [](bool enabled) { KdenliveSettings::setApplyEffectParamsToGroupWithSameValue(enabled); });
     effectGroupMenu->addAction(applyToSameOnly);
 
     applyEffectGroupsButton->setMenu(effectGroupMenu);
