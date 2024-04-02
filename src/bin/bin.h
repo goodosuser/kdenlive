@@ -379,6 +379,7 @@ public:
                                                  const QStringList &sourceValues, const QStringList &values, QUndoCommand *command);
     int clipAssetGroupInstances(int cid, const QString &assetId);
     void removeEffectFromGroup(const QString &assetId);
+    void disableEffectFromGroup(int cid, const QString &assetId, bool disable, Fun &undo, Fun &redo);
 
 private Q_SLOTS:
     void slotAddClip();

@@ -140,7 +140,6 @@ bool KeyframeModel::addKeyframe(GenTime pos, KeyframeType type, QVariant value)
     QWriteLocker locker(&m_lock);
     Fun undo = []() { return true; };
     Fun redo = []() { return true; };
-
     bool update = (m_keyframeList.count(pos) > 0);
     bool res = addKeyframe(pos, type, std::move(value), true, undo, redo);
     if (res) {

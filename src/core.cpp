@@ -1565,3 +1565,21 @@ void Core::removeGroupEffect(const ObjectId &id, const QString &assetId)
         return;
     }
 }
+
+void Core::applyEffectDisableToGroup(const ObjectId &id, const QString &assetId, bool disable, Fun &undo, Fun &redo)
+{
+    switch (id.type) {
+    case KdenliveObjectType::TimelineClip:
+        if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+            tl->disableEffectFromGroup(id.itemId, assetId, disable, undo, redo);
+        }
+        break;
+    case KdenliveObjectType::BinClip:
+        if (bin() != nullptr) {
+            bin()->disableEffectFromGroup(id.itemId, assetId, disable, undo, redo);
+        }
+        break;
+    default:
+        return;
+    }
+}

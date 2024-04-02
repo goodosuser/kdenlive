@@ -100,6 +100,7 @@ public:
                                                  const QStringList &sourceValues, const QStringList &values, QUndoCommand *command);
     QList<std::shared_ptr<KeyframeModelList>> getGroupKeyframeModels(int cid, const QString &assetId);
     void removeEffectFromGroup(int cid, const QString &assetId);
+    void disableEffectFromGroup(int cid, const QString &assetId, bool disable, Fun &undo, Fun &redo);
 
     const QString groupsData();
     bool loadGroups(const QString &groupsData);

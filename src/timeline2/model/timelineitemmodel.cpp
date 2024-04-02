@@ -13,6 +13,7 @@
 #include "core.h"
 #include "doc/docundostack.hpp"
 #include "doc/kdenlivedoc.h"
+#include "effects/effectstack/model/abstracteffectitem.hpp"
 #include "effects/effectstack/model/effectstackmodel.hpp"
 #include "groupsmodel.hpp"
 #include "kdenlivesettings.h"
@@ -1053,6 +1054,36 @@ void TimelineItemModel::removeEffectFromGroup(int cid, const QString &assetId)
         }
     }
     pCore->pushUndo(undo, redo, i18n("Delete effect %1", effectName));
+}
+
+void TimelineItemModel::disableEffectFromGroup(int cid, const QString &assetId, bool disable, Fun &undo, Fun &redo)
+{
+    int gid = m_groups->getRootId(cid);
+    std::unordered_set<int> sub;
+    if (gid > -1) {
+        if (m_singleSelectionMode && m_currentSelection.count(cid)) {
+            sub = m_currentSelection;
+        } else {
+            sub = m_groups->getLeaves(gid);
+        }
+    } else {
+        return;
+    }
+    for (auto &id : sub) {
+        if (id == cid) {
+            continue;
+        }
+        if (isClip(id)) {
+            int assetRow = clipAssetRow(id, assetId);
+            if (assetRow > -1) {
+                const auto clip = getClipPtr(id);
+                auto effect = clip->m_effectStack->getEffectStackRow(assetRow);
+                if (effect) {
+                    effect->markEnabled(!disable, undo, redo);
+                }
+            }
+        }
+    }
 }
 
 QList<std::shared_ptr<KeyframeModelList>> TimelineItemModel::getGroupKeyframeModels(int cid, const QString &assetId)

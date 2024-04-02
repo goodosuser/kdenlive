@@ -19,6 +19,7 @@ SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 #include "doc/docundostack.hpp"
 #include "doc/kdenlivedoc.h"
 #include "doc/kthumb.h"
+#include "effects/effectstack/model/abstracteffectitem.hpp"
 #include "effects/effectstack/model/effectstackmodel.hpp"
 #include "glaxnimatelauncher.h"
 #include "jobs/abstracttask.h"
@@ -6222,4 +6223,24 @@ void Bin::removeEffectFromGroup(const QString &assetId)
         }
     }
     pCore->pushUndo(undo, redo, i18n("Delete effect %1", effectName));
+}
+
+void Bin::disableEffectFromGroup(int cid, const QString &assetId, bool disable, Fun &undo, Fun &redo)
+{
+    QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
+    if (clips.size() < 2) {
+        return;
+    }
+    for (auto &c : clips) {
+        if (c->binId().toInt() == cid) {
+            continue;
+        }
+        int assetRow = c->getEffectStack()->effectRow(assetId);
+        if (assetRow > -1) {
+            auto effect = c->getEffectStack()->getEffectStackRow(assetRow);
+            if (effect) {
+                effect->markEnabled(!disable, undo, redo);
+            }
+        }
+    }
 }
