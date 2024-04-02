@@ -375,7 +375,10 @@ public:
                                     QUndoCommand *command);
     void applyClipAssetGroupKeyframeCommand(int cid, const QString &assetId, const QModelIndex &index, GenTime pos, const QVariant &previousValue,
                                             const QVariant &value, int ix, QUndoCommand *command);
+    void applyClipAssetGroupMultiKeyframeCommand(int cid, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
+                                                 const QStringList &sourceValues, const QStringList &values, QUndoCommand *command);
     int clipAssetGroupInstances(int cid, const QString &assetId);
+    void removeEffectFromGroup(const QString &assetId);
 
 private Q_SLOTS:
     void slotAddClip();

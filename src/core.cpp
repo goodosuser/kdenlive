@@ -1539,7 +1539,7 @@ void Core::groupAssetMultiKeyframeCommand(const ObjectId &id, const QString &ass
             break;
         case KdenliveObjectType::BinClip:
             if (bin() != nullptr) {
-                // bin()->applyClipAssetGroupMultiKeyframeCommand(id.itemId, assetId, indexes, pos, sourceValues, values, command);
+                bin()->applyClipAssetGroupMultiKeyframeCommand(id.itemId, assetId, indexes, pos, sourceValues, values, command);
             }
             break;
         default:
@@ -1558,7 +1558,7 @@ void Core::removeGroupEffect(const ObjectId &id, const QString &assetId)
         break;
     case KdenliveObjectType::BinClip:
         if (bin() != nullptr) {
-            // bin()->removeEffectFromGroup(id.itemId, assetId);
+            bin()->removeEffectFromGroup(assetId);
         }
         break;
     default:

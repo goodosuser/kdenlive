@@ -91,8 +91,8 @@ AssetPanel::AssetPanel(QWidget *parent)
     m_applyEffectGroups->setIcon(QIcon::fromTheme(QStringLiteral("link")));
     m_applyEffectGroups->setToolTip(i18n("Apply effect change to all clips in the group…"));
     m_applyEffectGroups->setWhatsThis(
-        xi18nc("@info:whatsthis",
-               "When enabled and the clip is in a group, all clips in this group that have the same effect will see the parameters adjusted as well."));
+        xi18nc("@info:whatsthis", "When enabled and the clip is in a group, all clips in this group that have the same effect will see the parameters adjusted "
+                                  "as well. Deleting an effect will delete it in all clips in the group."));
     buttonToolbar->addWidget(applyEffectGroupsButton);
     connect(m_applyEffectGroups, &QAction::toggled, this, [this](bool enabled) {
         KdenliveSettings::setApplyEffectParamsToGroup(enabled);

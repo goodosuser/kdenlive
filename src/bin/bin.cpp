@@ -6190,3 +6190,36 @@ int Bin::clipAssetGroupInstances(int cid, const QString &assetId)
     }
     return count;
 }
+
+void Bin::applyClipAssetGroupMultiKeyframeCommand(int cid, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
+                                                  const QStringList &sourceValues, const QStringList &values, QUndoCommand *command)
+{
+    QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
+    if (clips.size() < 2) {
+        return;
+    }
+    for (auto &c : clips) {
+        if (c->binId().toInt() == cid) {
+            continue;
+        }
+        int assetRow = c->getEffectStack()->effectRow(assetId);
+        if (assetRow > -1) {
+            c->getEffectStack()->applyAssetMultiKeyframeCommand(assetRow, indexes, pos, sourceValues, values, command);
+        }
+    }
+}
+
+void Bin::removeEffectFromGroup(const QString &assetId)
+{
+    QList<std::shared_ptr<ProjectClip>> clips = selectedClips();
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    QString effectName;
+    for (auto &c : clips) {
+        int assetRow = c->getEffectStack()->effectRow(assetId);
+        if (assetRow > -1) {
+            c->getEffectStack()->removeEffectWithUndo(assetId, effectName, undo, redo);
+        }
+    }
+    pCore->pushUndo(undo, redo, i18n("Delete effect %1", effectName));
+}
