@@ -1547,3 +1547,21 @@ void Core::groupAssetMultiKeyframeCommand(const ObjectId &id, const QString &ass
         }
     }
 }
+
+void Core::removeGroupEffect(const ObjectId &id, const QString &assetId)
+{
+    switch (id.type) {
+    case KdenliveObjectType::TimelineClip:
+        if (auto tl = currentDoc()->getTimeline(id.uuid)) {
+            tl->removeEffectFromGroup(id.itemId, assetId);
+        }
+        break;
+    case KdenliveObjectType::BinClip:
+        if (bin() != nullptr) {
+            // bin()->removeEffectFromGroup(id.itemId, assetId);
+        }
+        break;
+    default:
+        return;
+    }
+}

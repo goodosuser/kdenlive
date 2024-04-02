@@ -618,6 +618,8 @@ private:
     void showBinInfo();
     /** @brief Find all clip Ids that have a specific tag. */
     const QList<QString> getAllClipsWithTag(const QString &tag);
+    /** @brief Paste effect on a list of clips. */
+    bool doPasteEffect(std::vector<QString> ids, const QStringList &effectData);
 
 Q_SIGNALS:
     void itemUpdated(std::shared_ptr<AbstractProjectItem>);

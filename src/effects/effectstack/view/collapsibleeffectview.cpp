@@ -450,17 +450,34 @@ void CollapsibleEffectView::wheelEvent(QWheelEvent *e)
     QWidget::wheelEvent(e);
 }
 
+void CollapsibleEffectView::leaveEvent(QEvent *event)
+{
+    QWidget::leaveEvent(event);
+    pCore->setWidgetKeyBinding(QString());
+}
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+void CollapsibleEffectView::enterEvent(QEvent *event)
+#else
+void CollapsibleEffectView::enterEvent(QEnterEvent *event)
+#endif
+{
+    QWidget::enterEvent(event);
+    pCore->setWidgetKeyBinding(
+        i18nc("@info:status",
+              "<b>Drag</b> effect to another timeline clip, track or project clip to copy it. <b>Alt Drag</b> to copy it to a single item in a group."));
+}
+
 void CollapsibleEffectView::mouseMoveEvent(QMouseEvent *e)
 {
-    qDebug() << "XXXX COLLAPSIBLE MOVE EVENT....";
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (!m_dragging && (e->globalPos() - m_dragStart).manhattanLength() > QApplication::startDragDistance()) {
 #else
     if (!m_dragging && (e->globalPosition().toPoint() - m_dragStart).manhattanLength() > QApplication::startDragDistance()) {
 #endif
         m_dragging = true;
-        QPixmap pix = frame->grab();
-        Q_EMIT startDrag(pix, m_model->getAssetId(), m_model->getOwnerId(), m_model->row());
+        QPixmap pix = title->grab();
+        Q_EMIT startDrag(pix, m_model->getAssetId(), m_model->getOwnerId(), m_model->row(), e->modifiers() & Qt::AltModifier);
     }
     QWidget::mouseMoveEvent(e);
 }

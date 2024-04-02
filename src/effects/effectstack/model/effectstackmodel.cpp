@@ -151,6 +151,26 @@ void EffectStackModel::removeAllEffects(Fun &undo, Fun &redo)
 
 void EffectStackModel::removeEffect(const std::shared_ptr<EffectItemModel> &effect)
 {
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    QString effectName;
+    removeEffectWithUndo(effect, effectName, undo, redo);
+    PUSH_UNDO(undo, redo, i18n("Delete effect %1", effectName));
+}
+
+void EffectStackModel::removeEffectWithUndo(const QString &assetId, QString &effectName, Fun &undo, Fun &redo)
+{
+    for (int i = 0; i < rootItem->childCount(); ++i) {
+        std::shared_ptr<EffectItemModel> sourceEffect = std::static_pointer_cast<EffectItemModel>(rootItem->child(i));
+        if (assetId == sourceEffect->getAssetId()) {
+            removeEffectWithUndo(sourceEffect, effectName, undo, redo);
+            break;
+        }
+    }
+}
+
+void EffectStackModel::removeEffectWithUndo(const std::shared_ptr<EffectItemModel> &effect, QString &effectName, Fun &undo, Fun &redo)
+{
     qDebug() << "* * ** REMOVING EFFECT FROM STACK!!!\n!!!!!!!!!";
     QWriteLocker locker(&m_lock);
     Q_ASSERT(m_allItems.count(effect->getId()) > 0);
@@ -161,13 +181,13 @@ void EffectStackModel::removeEffect(const std::shared_ptr<EffectItemModel> &effe
         setActiveEffect(current - 1);
     }
     int currentRow = effect->row();
-    Fun undo = addItem_lambda(effect, parentId);
+    Fun local_undo = addItem_lambda(effect, parentId);
     if (currentRow != rowCount() - 1) {
         Fun move = moveItem_lambda(effect->getId(), currentRow, true);
         PUSH_LAMBDA(move, undo);
     }
-    Fun redo = removeItem_lambda(effect->getId());
-    bool res = redo();
+    Fun local_redo = removeItem_lambda(effect->getId());
+    bool res = local_redo();
     if (res) {
         int inFades = int(m_fadeIns.size());
         int outFades = int(m_fadeOuts.size());
@@ -175,7 +195,7 @@ void EffectStackModel::removeEffect(const std::shared_ptr<EffectItemModel> &effe
         m_fadeOuts.erase(effect->getId());
         inFades = int(m_fadeIns.size()) - inFades;
         outFades = int(m_fadeOuts.size()) - outFades;
-        QString effectName = EffectsRepository::get()->getName(effect->getAssetId());
+        effectName = EffectsRepository::get()->getName(effect->getAssetId());
         Fun update = [this, inFades, outFades]() {
             // Required to build the effect view
             if (rowCount() == 0) {
@@ -217,9 +237,10 @@ void EffectStackModel::removeEffect(const std::shared_ptr<EffectItemModel> &effe
             return true;
         };
         update();
-        PUSH_LAMBDA(update, redo);
-        PUSH_LAMBDA(update2, undo);
-        PUSH_UNDO(undo, redo, i18n("Delete effect %1", effectName));
+        PUSH_LAMBDA(update, local_redo);
+        PUSH_LAMBDA(update2, local_undo);
+        PUSH_LAMBDA(local_redo, redo);
+        PUSH_LAMBDA(local_undo, undo);
     } else {
         qDebug() << "..........FAILED EFFECT DELETION";
     }
@@ -416,7 +437,7 @@ bool EffectStackModel::fromXml(const QDomElement &effectsXml, Fun &undo, Fun &re
     return effectAdded;
 }
 
-bool EffectStackModel::copyEffect(const std::shared_ptr<AbstractEffectItem> &sourceItem, PlaylistState::ClipState state, bool logUndo)
+bool EffectStackModel::copyEffectWithUndo(const std::shared_ptr<AbstractEffectItem> &sourceItem, PlaylistState::ClipState state, Fun &undo, Fun &redo)
 {
     QWriteLocker locker(&m_lock);
     if (sourceItem->childCount() > 0) {
@@ -483,11 +504,21 @@ bool EffectStackModel::copyEffect(const std::shared_ptr<AbstractEffectItem> &sou
             return true;
         };
         update();
-        if (logUndo) {
-            PUSH_LAMBDA(update, local_redo);
-            PUSH_LAMBDA(update, local_undo);
-            pCore->pushUndo(local_undo, local_redo, i18n("Paste effect"));
-        }
+        PUSH_LAMBDA(update, local_redo);
+        PUSH_LAMBDA(update, local_undo);
+        PUSH_LAMBDA(local_redo, redo);
+        PUSH_LAMBDA(local_undo, undo);
+    }
+    return res;
+}
+
+bool EffectStackModel::copyEffect(const std::shared_ptr<AbstractEffectItem> &sourceItem, PlaylistState::ClipState state, bool logUndo)
+{
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    bool res = copyEffectWithUndo(sourceItem, state, undo, redo);
+    if (res && logUndo) {
+        pCore->pushUndo(undo, redo, i18n("Paste effect"));
     }
     return res;
 }
@@ -1641,11 +1672,19 @@ void EffectStackModel::applyAssetMultiKeyframeCommand(int row, const QList<QMode
     if (KdenliveSettings::applyEffectParamsToGroupWithSameValue()) {
         QStringList currentValue;
         for (auto &ix : indexes) {
-            currentValue << effectParamModel->getKeyframeModel()->getKeyModel(ix)->getInterpolatedValue(pos).toString();
+            int r = ix.row();
+            QModelIndex mappedIx = effectParamModel->getKeyframeModel()->getIndexAtRow(r);
+            currentValue << effectParamModel->getKeyframeModel()->getKeyModel(mappedIx)->getInterpolatedValue(pos).toString();
         }
-        if (sourceValues != currentValue) {
-            // Dont't apply change on this effect, the start value is not the same
+        if (sourceValues.count() != currentValue.count()) {
             return;
+        }
+        // The multikeyframe method is used by the lift/gamma/gain filter. It passes double values for r/g/b.
+        // Due to conversion, there may be some slight differences in values, so compare rounded values
+        for (int ix = 0; ix < sourceValues.count(); ix++) {
+            if (int(sourceValues.at(ix).toDouble() * 10000) != int(currentValue.at(ix).toDouble() * 10000)) {
+                return;
+            }
         }
     }
     new AssetMultiKeyframeCommand(effectParamModel, indexes, sourceValues, values, pos, command);

@@ -690,13 +690,14 @@ void TimelineItemModel::rebuildMixer()
 bool TimelineItemModel::copyClipEffect(int clipId, const QString sourceId)
 {
     QStringList source = sourceId.split(QLatin1Char(','));
-    Q_ASSERT(m_allClips.count(clipId) && source.count() == 4);
+    Q_ASSERT(m_allClips.count(clipId) && source.count() == 5);
     int itemType = source.at(0).toInt();
     int itemId = source.at(1).toInt();
     int itemRow = source.at(2).toInt();
     const QUuid uuid(source.at(3));
+    bool singleTarget = source.at(4).toInt() == 1;
     std::shared_ptr<EffectStackModel> effectStack = pCore->getItemEffectStack(uuid, itemType, itemId);
-    if (m_singleSelectionMode && m_currentSelection.count(clipId)) {
+    if (!singleTarget && m_singleSelectionMode && m_currentSelection.count(clipId)) {
         // only operate on the selected item
         Fun undo = []() { return true; };
         Fun redo = []() { return true; };
@@ -707,7 +708,7 @@ bool TimelineItemModel::copyClipEffect(int clipId, const QString sourceId)
         }
         pCore->pushUndo(undo, redo, i18n("Copy effect"));
         return true;
-    } else if (m_groups->isInGroup(clipId)) {
+    } else if (!singleTarget && m_groups->isInGroup(clipId)) {
         int parentGroup = m_groups->getRootId(clipId);
         if (parentGroup > -1) {
             Fun undo = []() { return true; };
@@ -1024,6 +1025,34 @@ void TimelineItemModel::applyClipAssetGroupMultiKeyframeCommand(int cid, const Q
             }
         }
     }
+}
+
+void TimelineItemModel::removeEffectFromGroup(int cid, const QString &assetId)
+{
+    int gid = m_groups->getRootId(cid);
+    std::unordered_set<int> sub;
+    Fun undo = []() { return true; };
+    Fun redo = []() { return true; };
+    if (gid > -1) {
+        if (m_singleSelectionMode && m_currentSelection.count(cid)) {
+            sub = m_currentSelection;
+        } else {
+            sub = m_groups->getLeaves(gid);
+        }
+    } else {
+        sub = {cid};
+    }
+    QString effectName;
+    for (auto &id : sub) {
+        if (isClip(id)) {
+            int assetRow = clipAssetRow(id, assetId);
+            if (assetRow > -1) {
+                const auto clip = getClipPtr(id);
+                clip->m_effectStack->removeEffectWithUndo(assetId, effectName, undo, redo);
+            }
+        }
+    }
+    pCore->pushUndo(undo, redo, i18n("Delete effect %1", effectName));
 }
 
 QList<std::shared_ptr<KeyframeModelList>> TimelineItemModel::getGroupKeyframeModels(int cid, const QString &assetId)

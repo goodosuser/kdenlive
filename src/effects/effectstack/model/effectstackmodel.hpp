@@ -48,6 +48,7 @@ public:
     /** @brief Copy an existing effect and append it at the bottom of the stack
      */
     bool copyEffect(const std::shared_ptr<AbstractEffectItem> &sourceItem, PlaylistState::ClipState state, bool logUndo = true);
+    bool copyEffectWithUndo(const std::shared_ptr<AbstractEffectItem> &sourceItem, PlaylistState::ClipState state, Fun &undo, Fun &redo);
     bool copyXmlEffect(const QDomElement &effect);
     bool copyXmlEffectWithUndo(const QDomElement &effect, Fun &undo, Fun &redo);
     /** @brief Import all effects from the given effect stack
@@ -153,6 +154,12 @@ public:
 public Q_SLOTS:
     /** @brief Delete an effect from the stack */
     void removeEffect(const std::shared_ptr<EffectItemModel> &effect);
+    /** @brief Delete an effect from the stack
+        @param effect The effect to be deleted
+        @param effectName Will be set to the effect name
+    */
+    void removeEffectWithUndo(const QString &assetId, QString &effectName, Fun &undo, Fun &redo);
+    void removeEffectWithUndo(const std::shared_ptr<EffectItemModel> &effect, QString &effectName, Fun &undo, Fun &redo);
     /** @brief Move an effect in the stack */
     void moveEffectByRow(int destRow, int srcRow);
 

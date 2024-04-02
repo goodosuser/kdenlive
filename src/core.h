@@ -322,6 +322,8 @@ public:
                                    const QVariant &value, int ix, QUndoCommand *command);
     void groupAssetMultiKeyframeCommand(const ObjectId &id, const QString &assetId, const QList<QModelIndex> &indexes, GenTime pos,
                                         const QStringList &sourceValues, const QStringList &values, QUndoCommand *command);
+    /** @brief Remove all effect instances in a group */
+    void removeGroupEffect(const ObjectId &id, const QString &assetId);
     /** @brief A list of markers type categories {marker type, {color, category name}} */
     struct MarkerCategory
     {
