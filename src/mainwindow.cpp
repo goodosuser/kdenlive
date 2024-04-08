@@ -526,6 +526,7 @@ void MainWindow::init(const QString &mltPath)
     auto *titleBars = new DockTitleBarManager(this);
     connect(layoutManager, &LayoutManagement::updateTitleBars, titleBars, [&]() { titleBars->slotUpdateTitleBars(); });
     connect(layoutManager, &LayoutManagement::connectDocks, titleBars, &DockTitleBarManager::connectDocks);
+    connect(this, &MainWindow::connectDockAfterInit, titleBars, &DockTitleBarManager::connectDockWidget);
     m_extraFactory = new KXMLGUIClient(this);
     buildDynamicActions();
 
@@ -611,6 +612,12 @@ void MainWindow::init(const QString &mltPath)
     loadDockActions();
     loadClipActions();
     loadContainerActions();
+
+#if KXMLGUI_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    KEditToolBar::setGlobalDefaultToolBar(QStringLiteral("timelineToolBar"));
+#else
+    KEditToolBar::setGlobalDefaultToolBar("timelineToolBar");
+#endif
 
     // Timeline composition menu
     auto *compositionMenu = new QMenu(this);
@@ -892,10 +899,10 @@ void MainWindow::loadContainerActions()
     if (monitorOverlay) {
         connect(monitorOverlay, &QMenu::triggered, this, &MainWindow::slotSwitchMonitorOverlay);
 
-        m_projectMonitor->setupMenu(static_cast<QMenu *>(factory()->container(QStringLiteral("monitor_go"), this)), monitorOverlay, m_playZone, m_loopZone,
-                                    nullptr, m_loopClip);
-        m_clipMonitor->setupMenu(static_cast<QMenu *>(factory()->container(QStringLiteral("monitor_go"), this)), monitorOverlay, m_playZone, m_loopZone,
-                                 static_cast<QMenu *>(factory()->container(QStringLiteral("marker_menu"), this)), nullptr);
+        m_projectMonitor->setupMenu(static_cast<QMenu *>(factory()->container(QStringLiteral("monitor_go"), this)), monitorOverlay, m_playZone,
+                                    m_playZoneFromCursor, m_loopZone, nullptr, m_loopClip);
+        m_clipMonitor->setupMenu(static_cast<QMenu *>(factory()->container(QStringLiteral("monitor_go"), this)), monitorOverlay, m_playZone,
+                                 m_playZoneFromCursor, m_loopZone, static_cast<QMenu *>(factory()->container(QStringLiteral("marker_menu"), this)), nullptr);
     }
 
     QMenu *clipInTimeline = static_cast<QMenu *>(factory()->container(QStringLiteral("clip_in_timeline"), this));
@@ -1029,9 +1036,10 @@ void MainWindow::saveProperties(KConfigGroup &config)
 
 void MainWindow::saveNewToolbarConfig()
 {
+    // Sync current changes
     KXmlGuiWindow::saveNewToolbarConfig();
-    // TODO for some reason all dynamically inserted actions are removed by the save toolbar
-    // So we currently re-add them manually....
+    // All dynamically inserted actions are removed by the save toolbar
+    // So re-add them manually....
     loadDockActions();
     loadClipActions();
     loadContainerActions();
@@ -1127,15 +1135,24 @@ QAction *MainWindow::addAction(const QString &name, const QString &text, const Q
 void MainWindow::setupActions()
 {
     // create edit mode buttons
-    m_normalEditTool = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-normal-edit")), i18n("Normal Mode"), this);
+    // TODO: remove icon check ones we require KF > 6.1
+    QString normalEditIconName =
+        QIcon::hasThemeIcon(QStringLiteral("timeline-mode-normal")) ? QStringLiteral("timeline-mode-normal") : QStringLiteral("kdenlive-normal-edit");
+    m_normalEditTool = new QAction(QIcon::fromTheme(normalEditIconName), i18n("Normal Mode"), this);
     m_normalEditTool->setCheckable(true);
     m_normalEditTool->setChecked(true);
 
-    m_overwriteEditTool = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-overwrite-edit")), i18n("Overwrite Mode"), this);
+    // TODO: remove icon check ones we require KF > 6.1
+    QString overwriteEditIconName =
+        QIcon::hasThemeIcon(QStringLiteral("timeline-mode-overwrite")) ? QStringLiteral("timeline-mode-overwrite") : QStringLiteral("kdenlive-overwrite-edit");
+    m_overwriteEditTool = new QAction(QIcon::fromTheme(overwriteEditIconName), i18n("Overwrite Mode"), this);
     m_overwriteEditTool->setCheckable(true);
     m_overwriteEditTool->setChecked(false);
 
-    m_insertEditTool = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-insert-edit")), i18n("Insert Mode"), this);
+    // TODO: remove icon check ones we require KF > 6.1
+    QString insertEditIconName =
+        QIcon::hasThemeIcon(QStringLiteral("timeline-mode-insert")) ? QStringLiteral("timeline-mode-insert") : QStringLiteral("kdenlive-insert-edit");
+    m_insertEditTool = new QAction(QIcon::fromTheme(insertEditIconName), i18n("Insert Mode"), this);
     m_insertEditTool->setCheckable(true);
     m_insertEditTool->setChecked(false);
 
@@ -1305,14 +1322,16 @@ void MainWindow::setupActions()
 
     connect(toolGroup, &QActionGroup::triggered, this, &MainWindow::slotChangeTool);
 
-    m_buttonVideoThumbs = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-show-videothumb")), i18n("Show Video Thumbnails"), this);
+    m_buttonVideoThumbs = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-show-video")), i18n("Show Video Thumbnails"), this);
     m_buttonVideoThumbs->setWhatsThis(xi18nc("@info:whatsthis", "Toggles the display of video thumbnails for the clips in the timeline (default is On)."));
 
     m_buttonVideoThumbs->setCheckable(true);
     m_buttonVideoThumbs->setChecked(KdenliveSettings::videothumbnails());
     connect(m_buttonVideoThumbs, &QAction::triggered, this, &MainWindow::slotSwitchVideoThumbs);
 
-    m_buttonAudioThumbs = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-show-audiothumb")), i18n("Show Audio Thumbnails"), this);
+    // TODO: remove icon check ones we require KF > 6.1
+    QString waveformIconName = QIcon::hasThemeIcon(QStringLiteral("waveform")) ? QStringLiteral("waveform") : QStringLiteral("kdenlive-show-audiothumb");
+    m_buttonAudioThumbs = new QAction(QIcon::fromTheme(waveformIconName), i18n("Show Audio Thumbnails"), this);
     m_buttonAudioThumbs->setWhatsThis(xi18nc("@info:whatsthis", "Toggles the display of audio thumbnails for the clips in the timeline (default is On)."));
 
     m_buttonAudioThumbs->setCheckable(true);
@@ -1467,6 +1486,10 @@ void MainWindow::setupActions()
     QAction *resetAction = new QAction(QIcon::fromTheme(QStringLiteral("view-refresh")), i18n("Reset Configuration…"), this);
     addAction(QStringLiteral("reset_config"), resetAction);
     connect(resetAction, &QAction::triggered, this, [&]() { slotRestart(true); });
+
+    m_playZoneFromCursor =
+        addAction(QStringLiteral("monitor_play_zone_cursor"), i18n("Play Zone From Cursor"), pCore->monitorManager(), SLOT(slotPlayZoneFromCursor()),
+                  QIcon::fromTheme(QStringLiteral("media-playback-start")), QKeySequence(), QStringLiteral("navandplayback"));
 
     m_playZone = addAction(QStringLiteral("monitor_play_zone"), i18n("Play Zone"), pCore->monitorManager(), SLOT(slotPlayZone()),
                            QIcon::fromTheme(QStringLiteral("media-playback-start")), Qt::CTRL | Qt::Key_Space, QStringLiteral("navandplayback"));
@@ -2495,21 +2518,21 @@ void MainWindow::connectDocument()
 
 void MainWindow::slotEditKeys()
 {
-    KShortcutsDialog dialog(KShortcutsEditor::AllActions, KShortcutsEditor::LetterShortcutsAllowed, this);
+    KShortcutsDialog *dialog = new KShortcutsDialog(KShortcutsEditor::AllActions, KShortcutsEditor::LetterShortcutsAllowed, this);
 
 #if KXMLGUI_VERSION >= QT_VERSION_CHECK(5, 98, 0)
     KNSWidgets::Action *downloadKeybordSchemes =
         new KNSWidgets::Action(i18n("Download New Keyboard Schemes…"), QStringLiteral(":data/kdenlive_keyboardschemes.knsrc"), this);
     connect(downloadKeybordSchemes, &KNSWidgets::Action::dialogFinished, this, [&](const QList<KNSCore::Entry> &changedEntries) {
         if (changedEntries.count() > 0) {
-            dialog.refreshSchemes();
+            dialog->refreshSchemes();
         }
     });
-    dialog.addActionToSchemesMoreButton(downloadKeybordSchemes);
+    dialog->addActionToSchemesMoreButton(downloadKeybordSchemes);
 #else
     // Find the combobox inside KShortcutsDialog for choosing keyboard scheme
     QComboBox *schemesList = nullptr;
-    for (QLabel *label : dialog.findChildren<QLabel *>()) {
+    for (QLabel *label : dialog->findChildren<QLabel *>()) {
         if (label->text() == i18n("Current scheme:")) {
             schemesList = qobject_cast<QComboBox *>(label->buddy());
             break;
@@ -2519,7 +2542,7 @@ void MainWindow::slotEditKeys()
     // dialog that provides a dropdown menu with additional actions, and add
     // "Download New Keyboard Schemes…" button into that menu
     if (schemesList) {
-        for (QPushButton *button : dialog.findChildren<QPushButton *>()) {
+        for (QPushButton *button : dialog->findChildren<QPushButton *>()) {
             if (button->text() == i18n("More Actions")) {
                 QMenu *moreActionsMenu = button->menu();
                 if (moreActionsMenu) {
@@ -2532,10 +2555,14 @@ void MainWindow::slotEditKeys()
         qWarning() << "Could not get list of schemes. Downloading new schemes is not available.";
     }
 #endif
-    dialog.addCollection(actionCollection(), i18nc("general keyboard shortcuts", "General"));
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->addCollection(actionCollection(), i18nc("general keyboard shortcuts", "General"));
     // Update the shortcut conflicts list bewtween mainwindow and media browser
-    connect(&dialog, &KShortcutsDialog::saved, pCore->mediaBrowser(), &MediaBrowser::detectShortcutConflicts);
-    dialog.configure();
+    connect(dialog, &KShortcutsDialog::saved, this, [this] {
+        pCore->mediaBrowser()->detectShortcutConflicts();
+        factory()->refreshActionProperties();
+    });
+    dialog->configure(true);
 }
 
 void MainWindow::slotPreferences()
@@ -3723,8 +3750,9 @@ void MainWindow::loadDockActions()
         if (a->objectName().startsWith(QStringLiteral("raise_"))) {
             continue;
         }
-        sorted.insert(a->text(), a);
-        sortedList << a->text();
+        const QString actionName = KLocalizedString::removeAcceleratorMarker(a->text());
+        sorted.insert(actionName, a);
+        sortedList << actionName;
     }
     QList<QAction *> orderedList;
     sortedList.sort(Qt::CaseInsensitive);
@@ -4183,6 +4211,12 @@ QDockWidget *MainWindow::addDock(const QString &title, const QString &objectName
     dockWidget->setObjectName(objectName);
     dockWidget->setWidget(widget);
     addDockWidget(area, dockWidget);
+    if (pCore->guiReady()) {
+        Q_EMIT connectDockAfterInit(dockWidget);
+        // Update dock list to endure it is sorted
+        updateDockMenu();
+        loadDockActions();
+    }
 
     // Add action to raise and focus the Dock (e.g. with a shortcut)
     /*QAction *action = new QAction(i18n("Raise %1", title), this);
@@ -4343,7 +4377,6 @@ void MainWindow::showTimelineToolbarMenu(const QPoint &pos)
             }
         }
     }
-    KEditToolBar::setGlobalDefaultToolBar("timelineToolBar");
     connect(contextSize, &QMenu::triggered, this, &MainWindow::setTimelineToolbarIconSize);
     menu.exec(m_timelineToolBar->mapToGlobal(pos));
     contextSize->deleteLater();
@@ -4757,9 +4790,6 @@ void MainWindow::addBin(Bin *bin, const QString &binName)
         tabifyDockWidget(m_projectBinDock, binDock);
         // Disable title bar since it is tabbed
         binDock->setTitleBarWidget(new QWidget);
-        // Update dock list
-        updateDockMenu();
-        loadDockActions();
         binDock->show();
         binDock->raise();
     }

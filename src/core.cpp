@@ -36,6 +36,7 @@ SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 #include <KMessageBox>
 #include <QCoreApplication>
 #include <QDir>
+#include <QImageReader>
 #include <QInputDialog>
 #include <QQuickStyle>
 #include <locale>
@@ -96,6 +97,11 @@ bool Core::build(const QString &packageType, bool testMode)
     qRegisterMetaType<QVector<QPair<QString, QVariant>>>("paramVector");
     qRegisterMetaType<ProfileParam *>("ProfileParam*");
     KeyframeModel::initKeyframeTypes();
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    // Increase memory limit allowed per image
+    QImageReader::setAllocationLimit(1024);
+#endif
 
     if (!testMode) {
         // Check if we had a crash
@@ -240,10 +246,10 @@ void Core::initGUI(bool inSandbox, const QString &MltPath, const QUrl &Url, cons
         // NOTE: we are restoring only one window, because Kdenlive only uses one MainWindow
         m_mainWindow->restore(1, false);
     }
-    m_guiConstructed = true;
     m_mainWindow->show();
     bin->slotUpdatePalette();
     Q_EMIT m_mainWindow->GUISetupDone();
+    m_guiConstructed = true;
     if (!Url.isEmpty()) {
         Q_EMIT loadingMessageNewStage(i18n("Loading project…"));
     }
@@ -1582,4 +1588,8 @@ void Core::applyEffectDisableToGroup(const ObjectId &id, const QString &assetId,
     default:
         return;
     }
+
+bool Core::guiReady() const
+{
+    return m_guiConstructed;
 }

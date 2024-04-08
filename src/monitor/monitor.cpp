@@ -385,7 +385,7 @@ Monitor::Monitor(Kdenlive::MonitorId id, MonitorManager *manager, QWidget *paren
     if (originalPlayAction->shortcut() == QKeySequence(0)) {
         m_playAction->setToolTip(strippedTooltip);
     } else {
-        m_playAction->setToolTip(strippedTooltip + QStringLiteral(" (") + originalPlayAction->shortcut().toString() + QLatin1Char(')'));
+        m_playAction->setToolTip(strippedTooltip + QStringLiteral(" (") + originalPlayAction->shortcut().toString(QKeySequence::NativeText) + QLatin1Char(')'));
     }
     m_playMenu->addAction(m_playAction);
     connect(m_playAction, &QAction::triggered, this, &Monitor::slotSwitchPlay);
@@ -630,7 +630,8 @@ void Monitor::slotLockMonitor(bool lock)
     m_monitorManager->lockMonitor(m_id, lock);
 }
 
-void Monitor::setupMenu(QMenu *goMenu, QMenu *overlayMenu, QAction *playZone, QAction *loopZone, QMenu *markerMenu, QAction *loopClip)
+void Monitor::setupMenu(QMenu *goMenu, QMenu *overlayMenu, QAction *playZone, QAction *playZoneFromCursor, QAction *loopZone, QMenu *markerMenu,
+                        QAction *loopClip)
 {
     delete m_contextMenu;
     m_contextMenu = new QMenu(this);
@@ -651,6 +652,7 @@ void Monitor::setupMenu(QMenu *goMenu, QMenu *overlayMenu, QAction *playZone, QA
     }
 
     m_playMenu->addAction(playZone);
+    m_playMenu->addAction(playZoneFromCursor);
     m_playMenu->addAction(loopZone);
     if (loopClip) {
         m_loopClipAction = loopClip;
@@ -678,7 +680,9 @@ void Monitor::setupMenu(QMenu *goMenu, QMenu *overlayMenu, QAction *playZone, QA
     if (m_id == Kdenlive::ProjectMonitor) {
         m_contextMenu->addAction(m_monitorManager->getAction(QStringLiteral("monitor_multitrack")));
     } else if (m_id == Kdenlive::ClipMonitor) {
-        QAction *alwaysShowAudio = new QAction(QIcon::fromTheme(QStringLiteral("kdenlive-show-audiothumb")), i18n("Always show audio thumbnails"), this);
+        // TODO: remove icon check ones we require KF > 6.1
+        QString waveformIconName = QIcon::hasThemeIcon(QStringLiteral("waveform")) ? QStringLiteral("waveform") : QStringLiteral("kdenlive-show-audiothumb");
+        QAction *alwaysShowAudio = new QAction(QIcon::fromTheme(waveformIconName), i18n("Always show audio thumbnails"), this);
         alwaysShowAudio->setCheckable(true);
         connect(alwaysShowAudio, &QAction::triggered, this, [this](bool checked) {
             KdenliveSettings::setAlwaysShowMonitorAudio(checked);
@@ -1779,12 +1783,12 @@ void Monitor::resetPlayOrLoopZone(const QString &binId)
     }
 }
 
-void Monitor::slotPlayZone()
+void Monitor::slotPlayZone(bool startFromIn)
 {
     if (!slotActivateMonitor()) {
         return;
     }
-    bool ok = m_glMonitor->playZone();
+    bool ok = m_glMonitor->playZone(startFromIn, false);
     if (ok) {
         updatePlayAction(true);
     }
@@ -1795,7 +1799,7 @@ void Monitor::slotLoopZone()
     if (!slotActivateMonitor()) {
         return;
     }
-    bool ok = m_glMonitor->playZone(true);
+    bool ok = m_glMonitor->playZone(true, true);
     if (ok) {
         updatePlayAction(true);
     }

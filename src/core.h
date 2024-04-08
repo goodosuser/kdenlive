@@ -326,6 +326,8 @@ public:
     void removeGroupEffect(const ObjectId &id, const QString &assetId);
     /** @brief Disable/enable all instance of an effect in a group */
     void applyEffectDisableToGroup(const ObjectId &id, const QString &assetId, bool disable, Fun &undo, Fun &redo);
+    /** @brief Returns true if all ui elements have been initialized */
+    bool guiReady() const;
     /** @brief A list of markers type categories {marker type, {color, category name}} */
     struct MarkerCategory
     {

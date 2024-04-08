@@ -295,6 +295,7 @@ private:
     QAction *m_zoomOut;
     QAction *m_loopZone;
     QAction *m_playZone;
+    QAction *m_playZoneFromCursor;
     QAction *m_loopClip;
     QAction *m_proxyClip;
     QAction *m_buttonSubtitleEditTool;
@@ -637,4 +638,6 @@ Q_SIGNALS:
     void enableUndo(bool enable);
     bool showTimelineFocus(bool focus, bool highlight);
     void removeBinDock(const QString &name);
+    /** @brief Connect a newly created dock to signals updating/hiding its title bar. */
+    void connectDockAfterInit(QDockWidget *);
 };
