@@ -1588,6 +1588,7 @@ void Core::applyEffectDisableToGroup(const ObjectId &id, const QString &assetId,
     default:
         return;
     }
+}
 
 bool Core::guiReady() const
 {
